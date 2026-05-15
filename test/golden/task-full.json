@@ -1,0 +1,20 @@
+{
+  "description": "This is a full task",
+  "due": "2026-05-15T15:00:00Z",
+  "remind_at": "2026-05-15T15:00:00Z",
+  "repeat_after": 86400,
+  "sub_tasks": [
+    {
+      "description": "This is a full sub-task",
+      "due": "2026-05-15T15:00:00Z",
+      "remind_at": "2026-05-15T15:00:00Z",
+      "repeat_after": 86400,
+      "tags": [
+        "sprint"
+      ]
+    }
+  ],
+  "tags": [
+    "project"
+  ]
+}

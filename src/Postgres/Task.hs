@@ -31,6 +31,7 @@ data Task f = Task
     updatedAt :: Column f UTCTime,
     id :: Column f Int64,
     isSubTask :: Column f Bool,
+    isCompleted :: Column f Bool,
     description :: Column f NonEmptyText,
     due :: Column f (Maybe UTCTime),
     remindAt :: Column f (Maybe UTCTime),
@@ -55,6 +56,7 @@ taskSchema =
             updatedAt = "updated_at",
             id = "id",
             isSubTask = "is_sub_task",
+            isCompleted = "is_completed",
             description = "description",
             due = "due",
             remindAt = "remind_at",
@@ -80,12 +82,11 @@ insertTask Task.Task {..} =
           updatedAt = now,
           id = unsafeDefault,
           isSubTask = lit False,
+          isCompleted = lit False,
           description = lit description,
           due = lit due,
           remindAt = lit remindAt,
           repeatAfter = lit $ (fromIntegral . (\(Task.Seconds s) -> s)) <$> repeatAfter,
-          -- The UI will ensure that a sub-task can only be added
-          -- to a task once the task itself has been created
           subTasks = lit Nothing,
           tags = lit $ (fold1 . NonEmpty.intersperse $$(NonEmptyText.make ",")) <$> tags
         }

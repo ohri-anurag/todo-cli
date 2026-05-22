@@ -11,7 +11,7 @@ newtype Seconds = Seconds Integer
 data Task
   = TaskWithoutSubTasks (Task' Proxy)
   | TaskWithSubTasks (Task' Identity)
-  deriving stock (Generic)
+  deriving stock (Show, Generic)
 
 type TaskWithoutSubTasks = Task' Proxy
 
@@ -26,6 +26,10 @@ data Task' f = Task
     tags :: Maybe (NonEmpty NonEmptyText)
   }
   deriving stock (Generic)
+
+deriving instance Show TaskWithSubTasks
+
+deriving instance Show TaskWithoutSubTasks
 
 options :: Aeson.Options
 options =

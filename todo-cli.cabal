@@ -82,7 +82,7 @@ library
     , refined           ^>=0.8.2
     , template-haskell  ^>=2.23.0.0
 
-executable todo-cli
+executable todo
   -- Import common warning flags.
   import:         warnings
 

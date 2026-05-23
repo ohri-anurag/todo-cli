@@ -25,6 +25,12 @@ instance Semigroup NonEmptyText where
       $ Refined.unrefine a
       <> Refined.unrefine b
 
+instance ToText NonEmptyText where
+  toText (NonEmptyText s) = unrefine s
+
+instance ToString NonEmptyText where
+  toString = toString . toText
+
 instance Rel8.DBType NonEmptyText where
   typeInformation =
     Rel8.parseTypeInformation

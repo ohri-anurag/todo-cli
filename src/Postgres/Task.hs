@@ -6,8 +6,9 @@ module Postgres.Task where
 import Data.Foldable1 (fold1)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Time (UTCTime)
-import NonEmptyText (NonEmptyText)
+import NonEmptyText (NonEmptyText (..))
 import NonEmptyText qualified
+import Postgres.Details (Schema (..), TableName (..))
 import Rel8
   ( Column,
     Expr,
@@ -15,15 +16,20 @@ import Rel8
     Name,
     OnConflict (DoNothing),
     QualifiedName (..),
+    Query,
     Rel8able,
+    Result,
     Returning (NoReturning),
     TableSchema (..),
+    each,
+    filter,
     lit,
+    not_,
     unsafeDefault,
     values,
   )
 import Rel8.Expr.Time (now)
-import Relude
+import Relude hiding (filter)
 import Task qualified
 
 data Task f = Task
@@ -42,13 +48,15 @@ data Task f = Task
   deriving stock (Generic)
   deriving anyclass (Rel8able)
 
-taskSchema :: TableSchema (Task Name)
-taskSchema =
+deriving instance Show (Task Result)
+
+taskSchema :: Schema -> TableName -> TableSchema (Task Name)
+taskSchema (Schema schema) (TableName table) =
   TableSchema
     { name =
         QualifiedName
-          { name = "tasks",
-            schema = Just "public"
+          { name = toString table,
+            schema = Just $ toString schema
           },
       columns =
         Task
@@ -66,10 +74,10 @@ taskSchema =
           }
     }
 
-insertTask :: Task.TaskWithoutSubTasks -> Insert ()
-insertTask Task.Task {..} =
+insertTask :: Schema -> TableName -> Task.TaskWithoutSubTasks -> Insert ()
+insertTask schema table Task.Task {..} =
   Insert
-    { into = taskSchema,
+    { into = taskSchema schema table,
       rows = values [task'],
       onConflict = DoNothing,
       returning = NoReturning
@@ -90,3 +98,8 @@ insertTask Task.Task {..} =
           subTasks = lit Nothing,
           tags = lit $ (fold1 . NonEmpty.intersperse $$(NonEmptyText.make ",")) <$> tags
         }
+
+listNonCompletedTasks :: Schema -> TableName -> Query (Task Expr)
+listNonCompletedTasks schema table = do
+  task <- each $ taskSchema schema table
+  filter (\(Task {isCompleted}) -> not_ $ isCompleted) task

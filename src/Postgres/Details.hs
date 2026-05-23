@@ -4,9 +4,15 @@ import Data.Aeson qualified as Aeson
 import NonEmptyText (NonEmptyText)
 import Relude
 
+newtype TableName = TableName NonEmptyText
+  deriving newtype (Show, Aeson.ToJSON, Aeson.FromJSON)
+
+newtype Schema = Schema NonEmptyText
+  deriving newtype (Show, Aeson.ToJSON, Aeson.FromJSON)
+
 data Details = Details
-  { table :: NonEmptyText,
-    schema :: NonEmptyText,
+  { table :: TableName,
+    schema :: Schema,
     connString :: NonEmptyText
   }
   deriving stock (Show, Generic)

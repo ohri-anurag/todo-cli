@@ -3,7 +3,14 @@
 
 module Main (main) where
 
+import Control.Monad.Except (withExceptT)
 import Data.Aeson qualified as Aeson
+import Hasql.Connection qualified
+import Hasql.Connection.Setting qualified
+import Hasql.Connection.Setting.Connection qualified
+import Hasql.Session qualified
+import Hasql.Transaction qualified
+import Hasql.Transaction.Sessions qualified
 import NonEmptyText (NonEmptyText (..))
 import NonEmptyText qualified as NonEmptyText
 import Options.Applicative
@@ -23,7 +30,9 @@ import Options.Applicative
     progDesc,
   )
 import Postgres.Details qualified as Postgres
+import Postgres.Task qualified as Postgres
 import Refined (refineError)
+import Rel8 qualified
 import Relude
 import System.Directory (XdgDirectory (..), createDirectoryIfMissing, getXdgDirectory)
 import System.FilePath ((</>))
@@ -82,12 +91,40 @@ setupMethodParser =
 parserInfo :: ParserInfo Command
 parserInfo = info commandParser fullDesc
 
+data Error
+  = ConfigParseError String
+  | PostgresConnectionError Hasql.Connection.ConnectionError
+  | PostgresSesssionError Hasql.Session.SessionError
+  deriving (Show)
+
 main :: IO ()
 main = do
   cmd <- execParser parserInfo
   case cmd of
-    AddTask task ->
-      print task
+    AddTask task -> do
+      eitherError <- runExceptT $ do
+        path <- lift $ getXdgDirectory XdgConfig "todo"
+        Postgres.Details {..} <- withExceptT ConfigParseError $ ExceptT $ Aeson.eitherDecodeFileStrict $ path </> "todo.config"
+        let connSetting = Hasql.Connection.Setting.connection $ Hasql.Connection.Setting.Connection.string $ toText connString
+        conn <- withExceptT PostgresConnectionError $ ExceptT $ Hasql.Connection.acquire [connSetting]
+        tasks <- withExceptT PostgresSesssionError
+          $ ExceptT
+          $ (\s -> Hasql.Session.run s conn)
+          . Hasql.Transaction.Sessions.transaction Hasql.Transaction.Sessions.Serializable Hasql.Transaction.Sessions.Write
+          $ do
+            Hasql.Transaction.statement ()
+              . Rel8.run_
+              . Rel8.insert
+              $ Postgres.insertTask schema table task
+            Hasql.Transaction.statement ()
+              . Rel8.run
+              . Rel8.select
+              $ Postgres.listNonCompletedTasks schema table
+        lift $ do
+          print tasks
+          Hasql.Connection.release conn
+
+      whenLeft_ eitherError print
     Setup method ->
       case method of
         Postgres -> do
@@ -96,7 +133,7 @@ main = do
           writeFileLBS (path </> "todo.config")
             $ Aeson.encode
             $ Postgres.Details
-              { table = $$(NonEmptyText.make "table name"),
-                schema = $$(NonEmptyText.make "schema name"),
+              { table = Postgres.TableName $$(NonEmptyText.make "table name"),
+                schema = Postgres.Schema $$(NonEmptyText.make "schema name"),
                 connString = $$(NonEmptyText.make "postgres connection string")
               }

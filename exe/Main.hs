@@ -1,10 +1,12 @@
 {-# LANGUAGE ApplicativeDo #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Main (main) where
 
 import Control.Monad.Except (withExceptT)
 import Data.Aeson qualified as Aeson
+import Data.String.Interpolate (i)
 import Hasql.Connection qualified
 import Hasql.Connection.Setting qualified
 import Hasql.Connection.Setting.Connection qualified
@@ -40,6 +42,7 @@ import Task qualified
 
 data Command
   = AddTask Task.TaskWithoutSubTasks
+  | Init SetupMethod
   | Setup SetupMethod
   deriving (Show)
 
@@ -56,6 +59,9 @@ commandParser =
         [ command "add"
             $ info (AddTask <$> taskParser)
             $ progDesc "Adds a new task",
+          command "init"
+            $ info (Init <$> setupMethodParser)
+            $ progDesc "Initialise the task storage as configured via the setup command",
           command "setup"
             $ info (Setup <$> setupMethodParser)
             $ progDesc "Create a config file for the selected storage method. Currently only Postgres is supported."
@@ -109,7 +115,7 @@ main = do
         conn <- withExceptT PostgresConnectionError $ ExceptT $ Hasql.Connection.acquire [connSetting]
         tasks <- withExceptT PostgresSesssionError
           $ ExceptT
-          $ (\s -> Hasql.Session.run s conn)
+          $ flip Hasql.Session.run conn
           . Hasql.Transaction.Sessions.transaction Hasql.Transaction.Sessions.Serializable Hasql.Transaction.Sessions.Write
           $ do
             Hasql.Transaction.statement ()
@@ -125,6 +131,34 @@ main = do
           Hasql.Connection.release conn
 
       whenLeft_ eitherError print
+    Init method ->
+      case method of
+        Postgres -> do
+          void . runExceptT $ do
+            path <- lift $ getXdgDirectory XdgConfig "todo"
+            Postgres.Details {..} <- withExceptT ConfigParseError $ ExceptT $ Aeson.eitherDecodeFileStrict $ path </> "todo.config"
+            let connSetting = Hasql.Connection.Setting.connection $ Hasql.Connection.Setting.Connection.string $ toText connString
+            conn <- withExceptT PostgresConnectionError $ ExceptT $ Hasql.Connection.acquire [connSetting]
+            withExceptT PostgresSesssionError
+              $ ExceptT
+              $ flip Hasql.Session.run conn
+              $ Hasql.Session.sql
+                [i|
+                  create table if not exists "public"."tasks" (
+                  	"created_at" timestamptz not null,
+                  	"updated_at" timestamptz not null,
+                  	"id" bigint generated always as identity primary key,
+                  	"is_sub_task" bool not null,
+                  	"is_completed" bool not null,
+                  	"description" text not null,
+                   	"due" timestamptz,
+                  	"remind_at" timestamptz,
+                  	"repeat_after" bigint,
+                  	"sub_tasks" text,
+                  	"tags" text);
+                |]
+
+            lift $ Hasql.Connection.release conn
     Setup method ->
       case method of
         Postgres -> do

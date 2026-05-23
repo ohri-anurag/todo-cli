@@ -105,6 +105,7 @@ executable todo
     , mtl                   ^>=2.3.1
     , optparse-applicative  ^>=0.19.0.0
     , refined               ^>=0.8.2
+    , string-interpolate    ^>=0.3.4.0
     , todo-cli
 
   -- Directories containing source files.

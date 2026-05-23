@@ -1,9 +1,11 @@
 {-# LANGUAGE ApplicativeDo #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Main (main) where
 
 import Data.Aeson qualified as Aeson
 import NonEmptyText (NonEmptyText (..))
+import NonEmptyText qualified as NonEmptyText
 import Options.Applicative
   ( Parser,
     ParserInfo,
@@ -21,24 +23,18 @@ import Options.Applicative
     progDesc,
   )
 import Postgres.Details qualified as Postgres
-import Refined (refineError, unrefine)
+import Refined (refineError)
 import Relude
-import System.Directory (createDirectoryIfMissing)
+import System.Directory (XdgDirectory (..), createDirectoryIfMissing, getXdgDirectory)
 import System.FilePath ((</>))
 import Task qualified
 
 data Command
   = AddTask Task.TaskWithoutSubTasks
-  | Setup SetupDetails
+  | Setup SetupMethod
   deriving (Show)
 
-data SetupDetails = SetupDetails
-  { configPath :: NonEmptyText,
-    method :: SetupMethod
-  }
-  deriving (Show)
-
-data SetupMethod = Postgres Postgres.Details
+data SetupMethod = Postgres
   deriving (Show)
 
 nonEmptyTextReader :: ReadM NonEmptyText
@@ -52,8 +48,8 @@ commandParser =
             $ info (AddTask <$> taskParser)
             $ progDesc "Adds a new task",
           command "setup"
-            $ info (Setup <$> setupDetailsParser)
-            $ progDesc "Setup the storage for todo"
+            $ info (Setup <$> setupMethodParser)
+            $ progDesc "Create a config file for the selected storage method. Currently only Postgres is supported."
         ]
     )
     <**> helper
@@ -73,29 +69,15 @@ taskParser = do
         tags = Nothing
       }
 
-setupDetailsParser :: Parser SetupDetails
-setupDetailsParser = do
-  method <- setupMethodParser
-  configPath <-
-    argument nonEmptyTextReader
-      $ mconcat [metavar "CONFIG_DIR", help "Path to a directory where todo will create and store the its config"]
-  pure SetupDetails {..}
-
 setupMethodParser :: Parser SetupMethod
-setupMethodParser = Postgres <$> postgresDetailsParser
-
-postgresDetailsParser :: Parser Postgres.Details
-postgresDetailsParser = do
-  table <-
-    argument nonEmptyTextReader
-      $ mconcat [metavar "TABLE", help "Postgres table name for storing tasks"]
-  schema <-
-    argument nonEmptyTextReader
-      $ mconcat [metavar "SCHEMA", help "Schema in which the table should exist"]
-  connString <-
-    argument nonEmptyTextReader
-      $ mconcat [metavar "CONN_STR", help "The connection string for your Postgres database"]
-  pure Postgres.Details {..}
+setupMethodParser =
+  hsubparser
+    ( mconcat
+        [ command "postgres"
+            $ info (pure Postgres)
+            $ progDesc "Use Postgres as the storage"
+        ]
+    )
 
 parserInfo :: ParserInfo Command
 parserInfo = info commandParser fullDesc
@@ -106,9 +88,15 @@ main = do
   case cmd of
     AddTask task ->
       print task
-    Setup SetupDetails {configPath = NonEmptyText configPath, method} ->
+    Setup method ->
       case method of
-        Postgres details -> do
-          let path = toString . unrefine $ configPath
+        Postgres -> do
+          path <- getXdgDirectory XdgConfig "todo"
           createDirectoryIfMissing True path
-          writeFileLBS (path </> "todo.config") $ Aeson.encode details
+          writeFileLBS (path </> "todo.config")
+            $ Aeson.encode
+            $ Postgres.Details
+              { table = $$(NonEmptyText.make "table name"),
+                schema = $$(NonEmptyText.make "schema name"),
+                connString = $$(NonEmptyText.make "postgres connection string")
+              }

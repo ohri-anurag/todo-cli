@@ -5,10 +5,12 @@ module Postgres.Task where
 
 import Data.Foldable1 (fold1)
 import Data.List.NonEmpty qualified as NonEmpty
+import Data.Text qualified as Text
 import Data.Time (UTCTime)
 import NonEmptyText (NonEmptyText (..))
 import NonEmptyText qualified
 import Postgres.Details (Schema (..), TableName (..))
+import Refined (refineFail)
 import Rel8
   ( Column,
     Expr,
@@ -29,7 +31,7 @@ import Rel8
     values,
   )
 import Rel8.Expr.Time (now)
-import Relude hiding (filter)
+import Relude hiding (filter, id)
 import Task qualified
 
 data Task f = Task
@@ -49,6 +51,37 @@ data Task f = Task
   deriving anyclass (Rel8able)
 
 deriving instance Show (Task Result)
+
+unpack :: Task Result -> Task.Task
+unpack Task {..} =
+  -- if isNothing subTasks
+  --   then
+  Task.TaskWithoutSubTasks
+    Task.Task
+      { description = description,
+        due = due,
+        remindAt = remindAt,
+        repeatAfter = Task.Seconds . fromIntegral <$> repeatAfter,
+        subTasks = Proxy,
+        tags = do
+          listNeTags <-
+            mapMaybe (fmap NonEmptyText . refineFail)
+              . Text.splitOn ","
+              . toText
+              <$> tags
+          nonEmpty listNeTags
+      }
+
+-- else
+--   TaskWith
+--     Task.Task
+--       { description = description,
+--         due = due,
+--         remindAt = remindAt,
+--         repeatAfter = repeatAfter,
+--         subTasks = Proxy,
+--         tags = tags
+--       }
 
 taskSchema :: Schema -> TableName -> TableSchema (Task Name)
 taskSchema (Schema schema) (TableName table) =

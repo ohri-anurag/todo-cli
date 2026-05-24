@@ -43,6 +43,7 @@ import Task qualified
 data Command
   = AddTask Task.TaskWithoutSubTasks
   | Init SetupMethod
+  | List
   | Setup SetupMethod
   deriving (Show)
 
@@ -62,6 +63,9 @@ commandParser =
           command "init"
             $ info (Init <$> setupMethodParser)
             $ progDesc "Initialise the task storage as configured via the setup command",
+          command "list"
+            $ info (pure List)
+            $ progDesc "List all the incomplete tasks",
           command "setup"
             $ info (Setup <$> setupMethodParser)
             $ progDesc "Create a config file for the selected storage method. Currently only Postgres is supported."
@@ -113,7 +117,8 @@ main = do
         Postgres.Details {..} <- withExceptT ConfigParseError $ ExceptT $ Aeson.eitherDecodeFileStrict $ path </> "todo.config"
         let connSetting = Hasql.Connection.Setting.connection $ Hasql.Connection.Setting.Connection.string $ toText connString
         conn <- withExceptT PostgresConnectionError $ ExceptT $ Hasql.Connection.acquire [connSetting]
-        tasks <- withExceptT PostgresSesssionError
+        tasks <- fmap (fmap Postgres.unpack)
+          $ withExceptT PostgresSesssionError
           $ ExceptT
           $ flip Hasql.Session.run conn
           . Hasql.Transaction.Sessions.transaction Hasql.Transaction.Sessions.Serializable Hasql.Transaction.Sessions.Write
@@ -127,7 +132,7 @@ main = do
               . Rel8.select
               $ Postgres.listNonCompletedTasks schema table
         lift $ do
-          print tasks
+          traverse_ (putStrLn . toString . Task.display) tasks
           Hasql.Connection.release conn
 
       whenLeft_ eitherError print
@@ -159,6 +164,25 @@ main = do
                 |]
 
             lift $ Hasql.Connection.release conn
+    List -> do
+      eitherError <- runExceptT $ do
+        path <- lift $ getXdgDirectory XdgConfig "todo"
+        Postgres.Details {..} <- withExceptT ConfigParseError $ ExceptT $ Aeson.eitherDecodeFileStrict $ path </> "todo.config"
+        let connSetting = Hasql.Connection.Setting.connection $ Hasql.Connection.Setting.Connection.string $ toText connString
+        conn <- withExceptT PostgresConnectionError $ ExceptT $ Hasql.Connection.acquire [connSetting]
+        tasks <-
+          fmap (fmap Postgres.unpack)
+            $ withExceptT PostgresSesssionError
+            $ ExceptT
+            $ flip Hasql.Session.run conn
+            . Hasql.Transaction.Sessions.transaction Hasql.Transaction.Sessions.Serializable Hasql.Transaction.Sessions.Write
+            $ Hasql.Transaction.statement ()
+            . Rel8.run
+            . Rel8.select
+            $ Postgres.listNonCompletedTasks schema table
+        traverse_ (putStrLn . toString . Task.display) tasks
+        lift $ Hasql.Connection.release conn
+      whenLeft_ eitherError print
     Setup method ->
       case method of
         Postgres -> do

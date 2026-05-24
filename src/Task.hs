@@ -56,3 +56,18 @@ instance Aeson.ToJSON Task where
 
 instance Aeson.FromJSON Task where
   parseJSON = Aeson.genericParseJSON options
+
+display :: Task -> Text
+display = \case
+  TaskWithSubTasks Task {..} ->
+    unlines
+      $ catMaybes
+        [ Just "======== TASK BEGINS ========",
+          Just $ "Description: " <> toText description
+        ]
+  TaskWithoutSubTasks Task {..} ->
+    unlines
+      $ catMaybes
+        [ Just "======== TASK BEGINS ========",
+          Just $ "Description: " <> toText description
+        ]

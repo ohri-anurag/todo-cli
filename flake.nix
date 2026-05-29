@@ -23,5 +23,21 @@
           ormolu
         ];
       };
+      dockerImage = pkgs.dockerTools.buildLayeredImage {
+        name = "ci-generator";
+        tag = "latest";
+        contents = with pkgs; [
+          haskellPackages.cabal-install
+          haskell.compiler.ghc912
+          bash # Needed by docker to run commands inside an image
+          coreutils # mkdir
+          wget # Needed by cabal to fetch updates
+          pkg-config # Needed by rel8
+          libpq.pg_config # Needed by rel8
+          gnused # Needed by postgresql-libpq-configure
+          gnugrep # Needed by postgresql-libpq-configure
+          gawk # Needed by postgresql-libpq-configure
+        ];
+      };
     };
 }

@@ -38,13 +38,12 @@ data Task f = Task
   { createdAt :: Column f UTCTime,
     updatedAt :: Column f UTCTime,
     id :: Column f Int64,
-    isSubTask :: Column f Bool,
     isCompleted :: Column f Bool,
     description :: Column f NonEmptyText,
     due :: Column f (Maybe UTCTime),
     remindAt :: Column f (Maybe UTCTime),
     repeatAfter :: Column f (Maybe Int64),
-    subTasks :: Column f (Maybe NonEmptyText),
+    parent :: Column f (Maybe Int64),
     tags :: Column f (Maybe NonEmptyText)
   }
   deriving stock (Generic)
@@ -96,13 +95,12 @@ taskSchema (Schema schema) (TableName table) =
           { createdAt = "created_at",
             updatedAt = "updated_at",
             id = "id",
-            isSubTask = "is_sub_task",
             isCompleted = "is_completed",
             description = "description",
             due = "due",
             remindAt = "remind_at",
             repeatAfter = "repeat_after",
-            subTasks = "sub_tasks",
+            parent = "parent",
             tags = "tags"
           }
     }
@@ -122,13 +120,12 @@ insertTask schema table Task.Task {..} =
         { createdAt = now,
           updatedAt = now,
           id = unsafeDefault,
-          isSubTask = lit False,
           isCompleted = lit False,
           description = lit description,
           due = lit due,
           remindAt = lit remindAt,
           repeatAfter = lit $ (fromIntegral . (\(Task.Seconds s) -> s)) <$> repeatAfter,
-          subTasks = lit Nothing,
+          parent = lit Nothing,
           tags = lit $ (fold1 . NonEmpty.intersperse $$(NonEmptyText.make ",")) <$> tags
         }
 

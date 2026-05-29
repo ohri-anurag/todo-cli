@@ -153,13 +153,12 @@ main = do
                   	"created_at" timestamptz not null,
                   	"updated_at" timestamptz not null,
                   	"id" bigint generated always as identity primary key,
-                  	"is_sub_task" bool not null,
                   	"is_completed" bool not null,
                   	"description" text not null,
                    	"due" timestamptz,
                   	"remind_at" timestamptz,
                   	"repeat_after" bigint,
-                  	"sub_tasks" text,
+                  	"parent" bigint,
                   	"tags" text);
                 |]
 

@@ -21,4 +21,4 @@ jobs:
       - name: Run CI using docker
         run: |
           docker pull ghcr.io/ohri-anurag/ci:latest
-          docker run ghcr.io/ohri-anurag/ci:latest cabal build
+          docker run ghcr.io/ohri-anurag/ci:latest bash -c 'cabal build && cabal test'

@@ -1,4 +1,4 @@
-FROM ci-generator:latest
+FROM ghcr.io/ohri-anurag/ci-generator:latest
 
 RUN mkdir /tmp
 

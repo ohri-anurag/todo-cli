@@ -24,7 +24,7 @@
         ];
       };
       dockerImage = pkgs.dockerTools.buildLayeredImage {
-        name = "ci-generator";
+        name = "ghcr.io/ohri-anurag/ci-generator";
         tag = "latest";
         contents = with pkgs; [
           haskellPackages.cabal-install

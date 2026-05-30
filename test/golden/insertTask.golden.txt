@@ -1,14 +1,13 @@
 INSERT INTO "public"."tasks" ("created_at",
                               "updated_at",
                               "id",
-                              "is_sub_task",
                               "is_completed",
                               "description",
                               "due",
                               "remind_at",
                               "repeat_after",
-                              "sub_tasks",
+                              "parent",
                               "tags")
 VALUES
-(CAST("now"() AS "timestamptz"),CAST("now"() AS "timestamptz"),DEFAULT,CAST(FALSE AS "bool"),CAST(FALSE AS "bool"),CAST(E'This is a test' AS "text"),CAST('2026-05-22T12:38:42Z' AS "timestamptz"),CAST('2026-05-22T11:58:31Z' AS "timestamptz"),CAST(3600 AS "int8"),CAST(NULL AS "text"),CAST(E'simple,test' AS "text"))
+(CAST("now"() AS "timestamptz"),CAST("now"() AS "timestamptz"),DEFAULT,CAST(FALSE AS "bool"),CAST(E'This is a test' AS "text"),CAST('2026-05-22T12:38:42Z' AS "timestamptz"),CAST('2026-05-22T11:58:31Z' AS "timestamptz"),CAST(3600 AS "int8"),CAST(NULL AS "int8"),CAST(E'simple,test' AS "text"))
 ON CONFLICT DO NOTHING

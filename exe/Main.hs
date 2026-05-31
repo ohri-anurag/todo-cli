@@ -107,49 +107,51 @@ data Error
   | PostgresSesssionError Hasql.Session.SessionError
   deriving (Show)
 
+withPostgresConnection :: (Hasql.Connection.Connection -> Postgres.Schema -> Postgres.TableName -> ExceptT Error IO a) -> ExceptT Error IO a
+withPostgresConnection f = do
+  path <- lift $ getXdgDirectory XdgConfig "todo"
+  Postgres.Details {..} <- withExceptT ConfigParseError $ ExceptT $ Aeson.eitherDecodeFileStrict $ path </> "todo.config"
+  let connSetting = Hasql.Connection.Setting.connection $ Hasql.Connection.Setting.Connection.string $ toText connString
+  conn <- withExceptT PostgresConnectionError $ ExceptT $ Hasql.Connection.acquire [connSetting]
+  a <- f conn schema table
+  lift $ Hasql.Connection.release conn
+  pure a
+
 main :: IO ()
 main = do
   cmd <- execParser parserInfo
   case cmd of
     AddTask task -> do
       eitherError <- runExceptT $ do
-        path <- lift $ getXdgDirectory XdgConfig "todo"
-        Postgres.Details {..} <- withExceptT ConfigParseError $ ExceptT $ Aeson.eitherDecodeFileStrict $ path </> "todo.config"
-        let connSetting = Hasql.Connection.Setting.connection $ Hasql.Connection.Setting.Connection.string $ toText connString
-        conn <- withExceptT PostgresConnectionError $ ExceptT $ Hasql.Connection.acquire [connSetting]
-        tasks <- fmap Postgres.unpackAll
-          $ withExceptT PostgresSesssionError
-          $ ExceptT
-          $ flip Hasql.Session.run conn
-          . Hasql.Transaction.Sessions.transaction Hasql.Transaction.Sessions.Serializable Hasql.Transaction.Sessions.Write
-          $ do
-            Hasql.Transaction.statement ()
-              . Rel8.run_
-              . Rel8.insert
-              $ Postgres.insertTask schema table task
-            Hasql.Transaction.statement ()
-              . Rel8.run
-              . Rel8.select
-              $ Postgres.listNonCompletedTasks schema table
-        lift $ do
-          traverse_ (putStrLn . toString . Task.display) tasks
-          Hasql.Connection.release conn
+        withPostgresConnection $ \conn schema table -> do
+          tasks <- fmap Postgres.unpackAll
+            $ withExceptT PostgresSesssionError
+            $ ExceptT
+            $ flip Hasql.Session.run conn
+            . Hasql.Transaction.Sessions.transaction Hasql.Transaction.Sessions.Serializable Hasql.Transaction.Sessions.Write
+            $ do
+              Hasql.Transaction.statement ()
+                . Rel8.run_
+                . Rel8.insert
+                $ Postgres.insertTask schema table task
+              Hasql.Transaction.statement ()
+                . Rel8.run
+                . Rel8.select
+                $ Postgres.listNonCompletedTasks schema table
+          lift $ traverse_ (putStrLn . toString . Task.display) tasks
 
       whenLeft_ eitherError print
     Init method ->
       case method of
         Postgres -> do
           void . runExceptT $ do
-            path <- lift $ getXdgDirectory XdgConfig "todo"
-            Postgres.Details {..} <- withExceptT ConfigParseError $ ExceptT $ Aeson.eitherDecodeFileStrict $ path </> "todo.config"
-            let connSetting = Hasql.Connection.Setting.connection $ Hasql.Connection.Setting.Connection.string $ toText connString
-            conn <- withExceptT PostgresConnectionError $ ExceptT $ Hasql.Connection.acquire [connSetting]
-            withExceptT PostgresSesssionError
-              $ ExceptT
-              $ flip Hasql.Session.run conn
-              $ Hasql.Session.sql
-                [i|
-                  create table if not exists "public"."tasks" (
+            withPostgresConnection $ \conn (Postgres.Schema schema) (Postgres.TableName table) ->
+              withExceptT PostgresSesssionError
+                $ ExceptT
+                $ flip Hasql.Session.run conn
+                $ Hasql.Session.sql
+                  [i|
+                  create table if not exists "#{toText schema}"."#{toText table}" (
                   	"created_at" timestamptz not null,
                   	"updated_at" timestamptz not null,
                   	"id" bigint generated always as identity primary key,
@@ -161,26 +163,20 @@ main = do
                   	"parent" bigint,
                   	"tags" text);
                 |]
-
-            lift $ Hasql.Connection.release conn
     List -> do
       eitherError <- runExceptT $ do
-        path <- lift $ getXdgDirectory XdgConfig "todo"
-        Postgres.Details {..} <- withExceptT ConfigParseError $ ExceptT $ Aeson.eitherDecodeFileStrict $ path </> "todo.config"
-        let connSetting = Hasql.Connection.Setting.connection $ Hasql.Connection.Setting.Connection.string $ toText connString
-        conn <- withExceptT PostgresConnectionError $ ExceptT $ Hasql.Connection.acquire [connSetting]
-        tasks <-
-          fmap Postgres.unpackAll
-            $ withExceptT PostgresSesssionError
-            $ ExceptT
-            $ flip Hasql.Session.run conn
-            . Hasql.Transaction.Sessions.transaction Hasql.Transaction.Sessions.Serializable Hasql.Transaction.Sessions.Write
-            $ Hasql.Transaction.statement ()
-            . Rel8.run
-            . Rel8.select
-            $ Postgres.listNonCompletedTasks schema table
-        traverse_ (putStrLn . toString . Task.display) tasks
-        lift $ Hasql.Connection.release conn
+        withPostgresConnection $ \conn schema table -> do
+          tasks <-
+            fmap Postgres.unpackAll
+              $ withExceptT PostgresSesssionError
+              $ ExceptT
+              $ flip Hasql.Session.run conn
+              . Hasql.Transaction.Sessions.transaction Hasql.Transaction.Sessions.Serializable Hasql.Transaction.Sessions.Write
+              $ Hasql.Transaction.statement ()
+              . Rel8.run
+              . Rel8.select
+              $ Postgres.listNonCompletedTasks schema table
+          traverse_ (putStrLn . toString . Task.display) tasks
       whenLeft_ eitherError print
     Setup method ->
       case method of

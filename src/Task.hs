@@ -41,7 +41,8 @@ display tz = \case
         [ Just "======== TASK BEGINS ========",
           Just $ "Description: " <> toText description,
           formatUTCTime tz "Due: " <$> due,
-          formatUTCTime tz "Remind at: " <$> remindAt
+          formatUTCTime tz "Remind at: " <$> remindAt,
+          repeatAfter <&> \r -> "Repeats: " <> show r
         ]
   TaskWithoutSubTasks Task {..} ->
     unlines
@@ -49,5 +50,6 @@ display tz = \case
         [ Just "======== TASK BEGINS ========",
           Just $ "Description: " <> toText description,
           formatUTCTime tz "Due: " <$> due,
-          formatUTCTime tz "Remind at: " <$> remindAt
+          formatUTCTime tz "Remind at: " <$> remindAt,
+          repeatAfter <&> \r -> "Repeats: " <> show r
         ]

@@ -1,4 +1,5 @@
 {-# LANGUAGE ApplicativeDo #-}
+{-# LANGUAGE MultilineStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -27,10 +28,12 @@ import Options.Applicative
     execParser,
     fullDesc,
     help,
+    helpDoc,
     helper,
     hsubparser,
     info,
     long,
+    maybeReader,
     metavar,
     option,
     progDesc,
@@ -42,6 +45,7 @@ import Postgres.Task qualified as Postgres
 import Refined (refineError)
 import Rel8 qualified
 import Relude
+import Repeat qualified
 import System.Directory (XdgDirectory (..), createDirectoryIfMissing, getXdgDirectory)
 import System.FilePath ((</>))
 import Task qualified
@@ -88,13 +92,31 @@ taskParser = do
     argument nonEmptyTextReader
       $ mconcat [metavar "DESC", help "A text based description of the task"]
   due <- option zonedTimeReader $ mconcat [short 'd', long "due", help "Due date in ISO8601 format (yyyy-MM-ddThh:mm:ss+hh:mm)."]
-  remindAt <- option zonedTimeReader $ mconcat [short 'r', long "remind-at", help "When to receive a reminder for this task in ISO8601 format (yyyy-MM-ddThh:mm:ss+hh:mm)."]
+  remindAt <- option zonedTimeReader $ mconcat [long "remind-at", help "When to receive a reminder for this task in ISO8601 format (yyyy-MM-ddThh:mm:ss+hh:mm)."]
+  repeatAfter <-
+    option (maybeReader Repeat.parse)
+      $ mconcat
+        [ short 'r',
+          long "repeat",
+          helpDoc
+            $ Just
+              """
+              Possible values are:
+              - daily
+              - weekly
+              - monthly
+              - yearly
+              - n (days|weeks|months|years), n >= 2
+              - mon,tue,wed,thu,fri,sat,sun. Each of the days is optional, provided that at least two days are present.
+              Example: mon,tue,fri
+              """
+        ]
   pure
     Task.Task
       { description = description,
         due = Just $ zonedTimeToUTC due,
         remindAt = Just $ zonedTimeToUTC remindAt,
-        repeatAfter = Nothing,
+        repeatAfter = Just repeatAfter,
         subTasks = Proxy,
         tags = Nothing
       }

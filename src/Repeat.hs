@@ -36,13 +36,13 @@ instance Show CustomWeek where
     fold
       $ intersperse ","
       $ catMaybes
-        [ if mon then Just "mon" else Nothing,
-          if tue then Just "tue" else Nothing,
-          if wed then Just "wed" else Nothing,
-          if thu then Just "thu" else Nothing,
-          if fri then Just "fri" else Nothing,
-          if sat then Just "sat" else Nothing,
-          if sun then Just "sun" else Nothing
+        [ if mon then Just "Mon" else Nothing,
+          if tue then Just "Tue" else Nothing,
+          if wed then Just "Wed" else Nothing,
+          if thu then Just "Thu" else Nothing,
+          if fri then Just "Fri" else Nothing,
+          if sat then Just "Sat" else Nothing,
+          if sun then Just "Sun" else Nothing
         ]
 
 data Repeat
@@ -71,7 +71,7 @@ parse = \case
   "yearly" -> Just Yearly
   str ->
     let text = toText str
-        days = Text.splitOn "," text
+        days = filter (not . Text.null) $ Text.splitOn "," $ Text.toLower text
         words = Text.words text
      in if length days > 1
           then

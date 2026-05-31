@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Postgres.Task where
@@ -24,12 +25,14 @@ import Rel8
     Result,
     Returning (NoReturning),
     TableSchema (..),
+    Update (..),
     each,
     filter,
     lit,
     not_,
     unsafeDefault,
     values,
+    (==.),
   )
 import Rel8.Expr.Time (now)
 import Relude hiding (filter, id)
@@ -77,6 +80,7 @@ unpack childMap Task {..} =
             Task.Task
               { description = description,
                 due = due,
+                id = id,
                 remindAt = remindAt,
                 repeatAfter = repeatAfter,
                 subTasks = Proxy,
@@ -93,6 +97,7 @@ unpack childMap Task {..} =
             Task.Task
               { description = description,
                 due = due,
+                id = id,
                 remindAt = remindAt,
                 repeatAfter = repeatAfter,
                 subTasks = Identity $ fmap (unpack childMap) children,
@@ -128,8 +133,17 @@ taskSchema (Schema schema) (TableName table) =
           }
     }
 
-insertTask :: Schema -> TableName -> Task.TaskWithoutSubTasks -> Insert ()
-insertTask schema table Task.Task {..} =
+data TaskOptions = TaskOptions
+  { description :: NonEmptyText,
+    due :: Maybe UTCTime,
+    remindAt :: Maybe UTCTime,
+    repeatAfter :: Maybe Repeat,
+    tags :: Maybe (NonEmpty NonEmptyText)
+  }
+  deriving (Show)
+
+insertTask :: Schema -> TableName -> TaskOptions -> Insert ()
+insertTask schema table TaskOptions {..} =
   Insert
     { into = taskSchema schema table,
       rows = values [task'],
@@ -151,6 +165,16 @@ insertTask schema table Task.Task {..} =
           parent = lit Nothing,
           tags = lit $ (fold1 . NonEmpty.intersperse $$(NonEmptyText.make ",")) <$> tags
         }
+
+completeTask :: Schema -> TableName -> Int64 -> Update ()
+completeTask schema table searchId =
+  Update
+    { target = taskSchema schema table,
+      from = pure (),
+      set = \_from row -> row {isCompleted = lit True, updatedAt = now},
+      updateWhere = \_from Task {id} -> id ==. lit searchId,
+      returning = NoReturning
+    }
 
 listNonCompletedTasks :: Schema -> TableName -> Query (Task Expr)
 listNonCompletedTasks schema table = do

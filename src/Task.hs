@@ -3,7 +3,7 @@ module Task where
 import Data.Time (TimeZone, UTCTime, utcToZonedTime)
 import Data.Time.Format (defaultTimeLocale, formatTime)
 import NonEmptyText (NonEmptyText)
-import Relude hiding (repeat)
+import Relude hiding (id)
 import Repeat (Repeat)
 
 data Task
@@ -18,6 +18,7 @@ type TaskWithSubTasks = Task' Identity
 data Task' f = Task
   { description :: NonEmptyText,
     due :: Maybe UTCTime,
+    id :: Int64,
     remindAt :: Maybe UTCTime,
     repeatAfter :: Maybe Repeat,
     subTasks :: f (NonEmpty Task),
@@ -38,7 +39,7 @@ display tz = \case
   TaskWithSubTasks Task {..} ->
     unlines
       $ catMaybes
-        [ Just "======== TASK BEGINS ========",
+        [ Just $ "ID: " <> show id,
           Just $ "Description: " <> toText description,
           formatUTCTime tz "Due: " <$> due,
           formatUTCTime tz "Remind at: " <$> remindAt,
@@ -48,7 +49,7 @@ display tz = \case
   TaskWithoutSubTasks Task {..} ->
     unlines
       $ catMaybes
-        [ Just "======== TASK BEGINS ========",
+        [ Just $ "ID: " <> show id,
           Just $ "Description: " <> toText description,
           formatUTCTime tz "Due: " <$> due,
           formatUTCTime tz "Remind at: " <$> remindAt,

@@ -1,0 +1,26 @@
+SELECT
+CAST("created_at0_1" AS "timestamptz") as "createdAt",
+CAST("updated_at1_1" AS "timestamptz") as "updatedAt",
+CAST("id2_1" AS "int8") as "id",
+CAST("is_completed3_1" AS "bool") as "isCompleted",
+CAST("description4_1" AS "text") as "description",
+CAST("due5_1" AS "timestamptz") as "due",
+CAST("remind_at6_1" AS "timestamptz") as "remindAt",
+CAST("repeat_after7_1" AS "bpchar"(1)[]) as "repeatAfter",
+CAST("parent8_1" AS "int8") as "parent",
+CAST("tags9_1" AS "text") as "tags"
+FROM (SELECT
+      *
+      FROM (SELECT
+            "created_at" as "created_at0_1",
+            "updated_at" as "updated_at1_1",
+            "id" as "id2_1",
+            "is_completed" as "is_completed3_1",
+            "description" as "description4_1",
+            "due" as "due5_1",
+            "remind_at" as "remind_at6_1",
+            "repeat_after" as "repeat_after7_1",
+            "parent" as "parent8_1",
+            "tags" as "tags9_1"
+            FROM "public"."tasks" AS "T1") AS "T1"
+      WHERE (NOT ("is_completed3_1"))) AS "T1"

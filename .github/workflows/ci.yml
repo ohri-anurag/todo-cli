@@ -22,15 +22,12 @@ jobs:
         run: |
           docker pull ghcr.io/ohri-anurag/ci:latest
           docker run -v ./:/ci ghcr.io/ohri-anurag/ci:latest bash -c 'cabal build --builddir=/build-cache && cabal test --builddir=/build-cache'
-  release:
-    runs-on: ubuntu-latest
-    depends-on: build
-    steps:
       - name: Release todo
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           docker container cp $(docker container list -qa):/build-cache/build/x86_64-linux/ghc-9.12.3/todo-cli-0.1.0.0/x/todo/build/todo/todo ./
       - name: Create GitHub Release and Upload Asset
+        if: startsWith(github.ref, 'refs/tags/v')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

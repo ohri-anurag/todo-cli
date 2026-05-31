@@ -203,7 +203,7 @@ main = do
     Init method ->
       case method of
         Postgres -> do
-          void . runExceptT $ do
+          eitherError <- runExceptT $ do
             withPostgresConnection $ \conn (Postgres.Schema schema) (Postgres.TableName table) ->
               withExceptT PostgresSesssionError
                 $ ExceptT
@@ -222,6 +222,7 @@ main = do
                   	"parent" bigint,
                   	"tags" text);
                 |]
+          whenLeft_ eitherError print
     List -> do
       tz <- getCurrentTimeZone
       eitherError <- runExceptT $ do

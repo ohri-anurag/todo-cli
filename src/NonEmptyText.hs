@@ -15,6 +15,9 @@ newtype NonEmptyText = NonEmptyText
   }
   deriving newtype (Show, Eq, Aeson.FromJSON, Aeson.ToJSON)
 
+parse :: Text -> Maybe NonEmptyText
+parse = fmap NonEmptyText . Refined.refineFail
+
 make :: (MonadFail m, Quote m) => Text -> Code m NonEmptyText
 make t = [||NonEmptyText $$(Refined.refineTH t)||]
 

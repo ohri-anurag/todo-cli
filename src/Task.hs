@@ -42,7 +42,8 @@ display tz = \case
           Just $ "Description: " <> toText description,
           formatUTCTime tz "Due: " <$> due,
           formatUTCTime tz "Remind at: " <$> remindAt,
-          repeatAfter <&> \r -> "Repeats: " <> show r
+          repeatAfter <&> \r -> "Repeats: " <> show r,
+          tags <&> \t -> fold $ "Tags: " : intersperse ", " (fmap (\tag -> "#" <> toText tag) $ toList t)
         ]
   TaskWithoutSubTasks Task {..} ->
     unlines
@@ -51,5 +52,6 @@ display tz = \case
           Just $ "Description: " <> toText description,
           formatUTCTime tz "Due: " <$> due,
           formatUTCTime tz "Remind at: " <$> remindAt,
-          repeatAfter <&> \r -> "Repeats: " <> show r
+          repeatAfter <&> \r -> "Repeats: " <> show r,
+          tags <&> \t -> fold $ "Tags: " : intersperse ", " (fmap (\tag -> "#" <> toText tag) $ toList t)
         ]

@@ -8,6 +8,7 @@ module Main (main) where
 import Control.Monad.Except (withExceptT)
 import Data.Aeson qualified as Aeson
 import Data.String.Interpolate (i)
+import Data.Text qualified as Text
 import Data.Time (ZonedTime, getCurrentTimeZone, zonedTimeToUTC)
 import Data.Time.Format.ISO8601 qualified as ISO8601
 import Hasql.Connection qualified
@@ -39,6 +40,7 @@ import Options.Applicative
     progDesc,
     short,
     str,
+    strOption,
   )
 import Postgres.Details qualified as Postgres
 import Postgres.Task qualified as Postgres
@@ -111,6 +113,7 @@ taskParser = do
               Example: mon,tue,fri
               """
         ]
+  tags <- fmap (Text.splitOn ",") $ strOption $ mconcat [short 't', long "tags", help "Comma separated list of tags"]
   pure
     Task.Task
       { description = description,
@@ -118,7 +121,7 @@ taskParser = do
         remindAt = Just $ zonedTimeToUTC remindAt,
         repeatAfter = Just repeatAfter,
         subTasks = Proxy,
-        tags = Nothing
+        tags = nonEmpty $ mapMaybe NonEmptyText.parse tags
       }
 
 setupMethodParser :: Parser SetupMethod

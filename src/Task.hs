@@ -1,13 +1,10 @@
 module Task where
 
-import Data.Aeson qualified as Aeson
 import Data.Time (TimeZone, UTCTime, utcToZonedTime)
 import Data.Time.Format (defaultTimeLocale, formatTime)
 import NonEmptyText (NonEmptyText)
 import Relude hiding (repeat)
-
-newtype Seconds = Seconds Integer
-  deriving newtype (Show, Eq, Aeson.FromJSON, Aeson.ToJSON)
+import Repeat (Repeat)
 
 data Task
   = TaskWithoutSubTasks (Task' Proxy)
@@ -22,7 +19,7 @@ data Task' f = Task
   { description :: NonEmptyText,
     due :: Maybe UTCTime,
     remindAt :: Maybe UTCTime,
-    repeatAfter :: Maybe Seconds,
+    repeatAfter :: Maybe Repeat,
     subTasks :: f (NonEmpty Task),
     tags :: Maybe (NonEmpty NonEmptyText)
   }
@@ -31,32 +28,6 @@ data Task' f = Task
 deriving instance Show TaskWithSubTasks
 
 deriving instance Show TaskWithoutSubTasks
-
-options :: Aeson.Options
-options =
-  Aeson.defaultOptions
-    { Aeson.omitNothingFields = True,
-      Aeson.fieldLabelModifier = Aeson.camelTo2 '_',
-      Aeson.sumEncoding = Aeson.UntaggedValue
-    }
-
-instance Aeson.ToJSON (Task' Proxy) where
-  toJSON = Aeson.genericToJSON options
-
-instance Aeson.FromJSON (Task' Proxy) where
-  parseJSON = Aeson.genericParseJSON options
-
-instance Aeson.ToJSON (Task' Identity) where
-  toJSON = Aeson.genericToJSON options
-
-instance Aeson.FromJSON (Task' Identity) where
-  parseJSON = Aeson.genericParseJSON options
-
-instance Aeson.ToJSON Task where
-  toJSON = Aeson.genericToJSON options
-
-instance Aeson.FromJSON Task where
-  parseJSON = Aeson.genericParseJSON options
 
 formatUTCTime :: TimeZone -> Text -> UTCTime -> Text
 formatUTCTime tz prefix time =

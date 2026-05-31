@@ -171,7 +171,7 @@ main = do
                   	"description" text not null,
                    	"due" timestamptz,
                   	"remind_at" timestamptz,
-                  	"repeat_after" bigint,
+                  	"repeat_after" text,
                   	"parent" bigint,
                   	"tags" text);
                 |]

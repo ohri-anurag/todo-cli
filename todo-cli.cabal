@@ -62,11 +62,12 @@ common warnings
   -- Base language which the package is written in.
   default-language:   GHC2024
   build-depends:
-    , aeson   ^>=2.2.4.1
-    , base    ^>=4.21.1.0
-    , rel8    ^>=1.7.0.0
-    , relude  ^>=1.2.2.2
-    , time    ^>=1.14
+    , aeson    ^>=2.2.4.1
+    , base     ^>=4.21.1.0
+    , refined  ^>=0.8.2
+    , rel8     ^>=1.7.0.0
+    , relude   ^>=1.2.2.2
+    , time     ^>=1.14
 
 library
   import:          warnings
@@ -77,11 +78,11 @@ library
     NonEmptyText
     Postgres.Details
     Postgres.Task
+    Repeat
     Task
 
   build-depends:
     , containers        ^>=0.7
-    , refined           ^>=0.8.2
     , template-haskell  ^>=2.23.0.0
 
 executable todo
@@ -105,7 +106,6 @@ executable todo
     , hasql-transaction     ^>=1.2.1
     , mtl                   ^>=2.3.1
     , optparse-applicative  ^>=0.19.0.0
-    , refined               ^>=0.8.2
     , string-interpolate    ^>=0.3.4.0
     , todo-cli
 
@@ -122,7 +122,7 @@ test-suite spec
   -- cabal-fmt: expand test/ -Main
   other-modules:
     Postgres.TaskTest
-    TaskTest
+    RepeatTest
 
   build-tool-depends: tasty-discover:tasty-discover ^>=5.2
   build-depends:
@@ -130,4 +130,5 @@ test-suite spec
     , tasty-discover      ^>=5.2.0
     , tasty-golden        ^>=2.3.6
     , tasty-golden-extra  ^>=0.1
+    , tasty-hunit         ^>=0.10.2
     , todo-cli

@@ -8,12 +8,13 @@ import Postgres.Details (Schema (..), TableName (..))
 import Postgres.Task (insertTask)
 import Rel8 (showInsert)
 import Relude
-import Task (Seconds (..), Task' (..))
+import Repeat qualified
+import Task (Task' (..))
 import Test.Tasty (TestTree)
 import Test.Tasty.Golden (goldenVsString)
 
-tasty_insertTask :: TestTree
-tasty_insertTask =
+test_insertTask :: TestTree
+test_insertTask =
   goldenVsString "insertTask" "test/golden/insertTask.golden.txt"
     $ pure
     . encodeUtf8
@@ -23,7 +24,7 @@ tasty_insertTask =
       { description = $$(NonEmptyText.make "This is a test"),
         due = Just $ posixSecondsToUTCTime 1779453522,
         remindAt = Just $ posixSecondsToUTCTime 1779451111,
-        repeatAfter = Just $ Seconds 3600,
+        repeatAfter = Just Repeat.Daily,
         subTasks = Proxy,
         tags =
           Just

@@ -34,6 +34,7 @@ import Rel8
 import Rel8.Expr.Time (now)
 import Relude hiding (filter, id)
 import Relude qualified as Relude (filter)
+import Repeat (Repeat (..))
 import Task qualified
 
 data Task f = Task
@@ -44,7 +45,7 @@ data Task f = Task
     description :: Column f NonEmptyText,
     due :: Column f (Maybe UTCTime),
     remindAt :: Column f (Maybe UTCTime),
-    repeatAfter :: Column f (Maybe Int64),
+    repeatAfter :: Column f (Maybe Repeat),
     parent :: Column f (Maybe Int64),
     tags :: Column f (Maybe NonEmptyText)
   }
@@ -77,7 +78,7 @@ unpack childMap Task {..} =
               { description = description,
                 due = due,
                 remindAt = remindAt,
-                repeatAfter = Task.Seconds . fromIntegral <$> repeatAfter,
+                repeatAfter = repeatAfter,
                 subTasks = Proxy,
                 tags = do
                   listNeTags <-
@@ -93,7 +94,7 @@ unpack childMap Task {..} =
               { description = description,
                 due = due,
                 remindAt = remindAt,
-                repeatAfter = Task.Seconds . fromIntegral <$> repeatAfter,
+                repeatAfter = repeatAfter,
                 subTasks = Identity $ fmap (unpack childMap) children,
                 tags = do
                   listNeTags <-
@@ -146,7 +147,7 @@ insertTask schema table Task.Task {..} =
           description = lit description,
           due = lit due,
           remindAt = lit remindAt,
-          repeatAfter = lit $ (fromIntegral . (\(Task.Seconds s) -> s)) <$> repeatAfter,
+          repeatAfter = lit repeatAfter,
           parent = lit Nothing,
           tags = lit $ (fold1 . NonEmpty.intersperse $$(NonEmptyText.make ",")) <$> tags
         }

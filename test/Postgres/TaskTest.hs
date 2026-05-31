@@ -5,8 +5,8 @@ module Postgres.TaskTest where
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 import NonEmptyText qualified
 import Postgres.Details (Schema (..), TableName (..))
-import Postgres.Task (TaskOptions (..), insertTask, listNonCompletedTasks)
-import Rel8 (showInsert, showQuery)
+import Postgres.Task (TaskOptions (..), completeTask, insertTask, listNonCompletedTasks)
+import Rel8 (showInsert, showQuery, showUpdate)
 import Relude
 import Repeat qualified
 import Test.Tasty (TestTree)
@@ -29,6 +29,14 @@ test_insertTask =
             $ $$(NonEmptyText.make "simple")
             :| [$$(NonEmptyText.make "test")]
       }
+
+test_completeTask :: TestTree
+test_completeTask =
+  goldenVsString "completeTask" "test/golden/completeTask.golden.txt"
+    $ pure
+    . encodeUtf8
+    . showUpdate
+    $ completeTask (Schema $$(NonEmptyText.make "public")) (TableName $$(NonEmptyText.make "tasks")) 2
 
 test_listNonCompletedTasks :: TestTree
 test_listNonCompletedTasks =

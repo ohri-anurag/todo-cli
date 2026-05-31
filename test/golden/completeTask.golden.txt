@@ -1,0 +1,12 @@
+UPDATE "public"."tasks"
+SET "created_at" = "public"."tasks"."created_at",
+    "updated_at" = CAST("now"() AS "timestamptz"),
+    "id" = "public"."tasks"."id",
+    "is_completed" = CAST(TRUE AS "bool"),
+    "description" = "public"."tasks"."description",
+    "due" = "public"."tasks"."due",
+    "remind_at" = "public"."tasks"."remind_at",
+    "repeat_after" = "public"."tasks"."repeat_after",
+    "parent" = "public"."tasks"."parent",
+    "tags" = "public"."tasks"."tags"
+WHERE "public"."tasks"."id" = (CAST(2 AS "int8"))

@@ -80,6 +80,7 @@ library
     Task
 
   build-depends:
+    , containers        ^>=0.7
     , refined           ^>=0.8.2
     , template-haskell  ^>=2.23.0.0
 

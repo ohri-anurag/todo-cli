@@ -117,7 +117,7 @@ main = do
         Postgres.Details {..} <- withExceptT ConfigParseError $ ExceptT $ Aeson.eitherDecodeFileStrict $ path </> "todo.config"
         let connSetting = Hasql.Connection.Setting.connection $ Hasql.Connection.Setting.Connection.string $ toText connString
         conn <- withExceptT PostgresConnectionError $ ExceptT $ Hasql.Connection.acquire [connSetting]
-        tasks <- fmap (fmap Postgres.unpack)
+        tasks <- fmap Postgres.unpackAll
           $ withExceptT PostgresSesssionError
           $ ExceptT
           $ flip Hasql.Session.run conn
@@ -170,7 +170,7 @@ main = do
         let connSetting = Hasql.Connection.Setting.connection $ Hasql.Connection.Setting.Connection.string $ toText connString
         conn <- withExceptT PostgresConnectionError $ ExceptT $ Hasql.Connection.acquire [connSetting]
         tasks <-
-          fmap (fmap Postgres.unpack)
+          fmap Postgres.unpackAll
             $ withExceptT PostgresSesssionError
             $ ExceptT
             $ flip Hasql.Session.run conn

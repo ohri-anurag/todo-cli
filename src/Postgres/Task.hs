@@ -5,6 +5,7 @@ module Postgres.Task where
 
 import Data.Foldable1 (fold1)
 import Data.List.NonEmpty qualified as NonEmpty
+import Data.Map qualified as Map
 import Data.Text qualified as Text
 import Data.Time (UTCTime)
 import NonEmptyText (NonEmptyText (..))
@@ -32,6 +33,7 @@ import Rel8
   )
 import Rel8.Expr.Time (now)
 import Relude hiding (filter, id)
+import Relude qualified as Relude (filter)
 import Task qualified
 
 data Task f = Task
@@ -51,36 +53,56 @@ data Task f = Task
 
 deriving instance Show (Task Result)
 
-unpack :: Task Result -> Task.Task
-unpack Task {..} =
-  -- if isNothing subTasks
-  --   then
-  Task.TaskWithoutSubTasks
-    Task.Task
-      { description = description,
-        due = due,
-        remindAt = remindAt,
-        repeatAfter = Task.Seconds . fromIntegral <$> repeatAfter,
-        subTasks = Proxy,
-        tags = do
-          listNeTags <-
-            mapMaybe (fmap NonEmptyText . refineFail)
-              . Text.splitOn ","
-              . toText
-              <$> tags
-          nonEmpty listNeTags
-      }
+unpackAll :: [Task Result] -> [Task.Task]
+unpackAll postgresTasks =
+  let idMap = Map.fromList $ postgresTasks <&> \(task@Task {id}) -> (id, task)
+      childMap =
+        Map.unionsWith (<>)
+          $ mapMaybe
+            ( \(child@Task {parent}) -> do
+                parentId <- parent
+                Task {id} <- Map.lookup parentId idMap
+                Just $ Map.singleton id $ child :| []
+            )
+            postgresTasks
+   in fmap (unpack childMap) $ Relude.filter (\(Task {parent}) -> isNothing parent) postgresTasks
 
--- else
---   TaskWith
---     Task.Task
---       { description = description,
---         due = due,
---         remindAt = remindAt,
---         repeatAfter = repeatAfter,
---         subTasks = Proxy,
---         tags = tags
---       }
+unpack :: Map Int64 (NonEmpty (Task Result)) -> Task Result -> Task.Task
+unpack childMap Task {..} =
+  let childrenMaybe = Map.lookup id childMap
+   in case childrenMaybe of
+        Nothing ->
+          Task.TaskWithoutSubTasks
+            Task.Task
+              { description = description,
+                due = due,
+                remindAt = remindAt,
+                repeatAfter = Task.Seconds . fromIntegral <$> repeatAfter,
+                subTasks = Proxy,
+                tags = do
+                  listNeTags <-
+                    mapMaybe (fmap NonEmptyText . refineFail)
+                      . Text.splitOn ","
+                      . toText
+                      <$> tags
+                  nonEmpty listNeTags
+              }
+        Just children ->
+          Task.TaskWithSubTasks
+            Task.Task
+              { description = description,
+                due = due,
+                remindAt = remindAt,
+                repeatAfter = Task.Seconds . fromIntegral <$> repeatAfter,
+                subTasks = Identity $ fmap (unpack childMap) children,
+                tags = do
+                  listNeTags <-
+                    mapMaybe (fmap NonEmptyText . refineFail)
+                      . Text.splitOn ","
+                      . toText
+                      <$> tags
+                  nonEmpty listNeTags
+              }
 
 taskSchema :: Schema -> TableName -> TableSchema (Task Name)
 taskSchema (Schema schema) (TableName table) =

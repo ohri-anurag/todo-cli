@@ -7,6 +7,8 @@ module Main (main) where
 import Control.Monad.Except (withExceptT)
 import Data.Aeson qualified as Aeson
 import Data.String.Interpolate (i)
+import Data.Time (ZonedTime, getCurrentTimeZone, zonedTimeToUTC)
+import Data.Time.Format.ISO8601 qualified as ISO8601
 import Hasql.Connection qualified
 import Hasql.Connection.Setting qualified
 import Hasql.Connection.Setting.Connection qualified
@@ -28,8 +30,12 @@ import Options.Applicative
     helper,
     hsubparser,
     info,
+    long,
     metavar,
+    option,
     progDesc,
+    short,
+    str,
   )
 import Postgres.Details qualified as Postgres
 import Postgres.Task qualified as Postgres
@@ -52,6 +58,9 @@ data SetupMethod = Postgres
 
 nonEmptyTextReader :: ReadM NonEmptyText
 nonEmptyTextReader = eitherReader (bimap show NonEmptyText . refineError . toText)
+
+zonedTimeReader :: ReadM ZonedTime
+zonedTimeReader = str >>= ISO8601.iso8601ParseM
 
 commandParser :: Parser Command
 commandParser =
@@ -78,10 +87,11 @@ taskParser = do
   description <-
     argument nonEmptyTextReader
       $ mconcat [metavar "DESC", help "A text based description of the task"]
+  due <- option zonedTimeReader $ mconcat [short 'd', long "due", help "Due date in ISO8601 format (yyyy-MM-ddThh:mm:ss+hh:mm)."]
   pure
     Task.Task
       { description = description,
-        due = Nothing,
+        due = Just $ zonedTimeToUTC due,
         remindAt = Nothing,
         repeatAfter = Nothing,
         subTasks = Proxy,
@@ -122,6 +132,7 @@ main = do
   cmd <- execParser parserInfo
   case cmd of
     AddTask task -> do
+      tz <- getCurrentTimeZone
       eitherError <- runExceptT $ do
         withPostgresConnection $ \conn schema table -> do
           tasks <- fmap Postgres.unpackAll
@@ -138,7 +149,7 @@ main = do
                 . Rel8.run
                 . Rel8.select
                 $ Postgres.listNonCompletedTasks schema table
-          lift $ traverse_ (putStrLn . toString . Task.display) tasks
+          lift $ traverse_ (putStrLn . toString . Task.display tz) tasks
 
       whenLeft_ eitherError print
     Init method ->
@@ -164,6 +175,7 @@ main = do
                   	"tags" text);
                 |]
     List -> do
+      tz <- getCurrentTimeZone
       eitherError <- runExceptT $ do
         withPostgresConnection $ \conn schema table -> do
           tasks <-
@@ -176,7 +188,7 @@ main = do
               . Rel8.run
               . Rel8.select
               $ Postgres.listNonCompletedTasks schema table
-          traverse_ (putStrLn . toString . Task.display) tasks
+          traverse_ (putStrLn . toString . Task.display tz) tasks
       whenLeft_ eitherError print
     Setup method ->
       case method of

@@ -1,7 +1,8 @@
 module Task where
 
 import Data.Aeson qualified as Aeson
-import Data.Time (UTCTime)
+import Data.Time (TimeZone, UTCTime, utcToZonedTime)
+import Data.Time.Format (defaultTimeLocale, formatTime)
 import NonEmptyText (NonEmptyText)
 import Relude hiding (repeat)
 
@@ -57,17 +58,19 @@ instance Aeson.ToJSON Task where
 instance Aeson.FromJSON Task where
   parseJSON = Aeson.genericParseJSON options
 
-display :: Task -> Text
-display = \case
+display :: TimeZone -> Task -> Text
+display tz = \case
   TaskWithSubTasks Task {..} ->
     unlines
       $ catMaybes
         [ Just "======== TASK BEGINS ========",
-          Just $ "Description: " <> toText description
+          Just $ "Description: " <> toText description,
+          due <&> \d -> "Due: " <> toText (formatTime defaultTimeLocale "%A, %B %d, %Y at %R" $ utcToZonedTime tz d)
         ]
   TaskWithoutSubTasks Task {..} ->
     unlines
       $ catMaybes
         [ Just "======== TASK BEGINS ========",
-          Just $ "Description: " <> toText description
+          Just $ "Description: " <> toText description,
+          due <&> \d -> "Due: " <> toText (formatTime defaultTimeLocale "%A, %B %d, %Y at %R" $ utcToZonedTime tz d)
         ]

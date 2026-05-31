@@ -58,6 +58,10 @@ instance Aeson.ToJSON Task where
 instance Aeson.FromJSON Task where
   parseJSON = Aeson.genericParseJSON options
 
+formatUTCTime :: TimeZone -> Text -> UTCTime -> Text
+formatUTCTime tz prefix time =
+  prefix <> toText (formatTime defaultTimeLocale "%A, %B %d, %Y at %R" $ utcToZonedTime tz time)
+
 display :: TimeZone -> Task -> Text
 display tz = \case
   TaskWithSubTasks Task {..} ->
@@ -65,12 +69,14 @@ display tz = \case
       $ catMaybes
         [ Just "======== TASK BEGINS ========",
           Just $ "Description: " <> toText description,
-          due <&> \d -> "Due: " <> toText (formatTime defaultTimeLocale "%A, %B %d, %Y at %R" $ utcToZonedTime tz d)
+          formatUTCTime tz "Due: " <$> due,
+          formatUTCTime tz "Remind at: " <$> remindAt
         ]
   TaskWithoutSubTasks Task {..} ->
     unlines
       $ catMaybes
         [ Just "======== TASK BEGINS ========",
           Just $ "Description: " <> toText description,
-          due <&> \d -> "Due: " <> toText (formatTime defaultTimeLocale "%A, %B %d, %Y at %R" $ utcToZonedTime tz d)
+          formatUTCTime tz "Due: " <$> due,
+          formatUTCTime tz "Remind at: " <$> remindAt
         ]

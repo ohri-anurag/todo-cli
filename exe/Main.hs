@@ -88,11 +88,12 @@ taskParser = do
     argument nonEmptyTextReader
       $ mconcat [metavar "DESC", help "A text based description of the task"]
   due <- option zonedTimeReader $ mconcat [short 'd', long "due", help "Due date in ISO8601 format (yyyy-MM-ddThh:mm:ss+hh:mm)."]
+  remindAt <- option zonedTimeReader $ mconcat [short 'r', long "remind-at", help "When to receive a reminder for this task in ISO8601 format (yyyy-MM-ddThh:mm:ss+hh:mm)."]
   pure
     Task.Task
       { description = description,
         due = Just $ zonedTimeToUTC due,
-        remindAt = Nothing,
+        remindAt = Just $ zonedTimeToUTC remindAt,
         repeatAfter = Nothing,
         subTasks = Proxy,
         tags = Nothing

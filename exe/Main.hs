@@ -5,6 +5,7 @@
 
 module Main (main) where
 
+import Color qualified
 import Control.Monad.Except (withExceptT)
 import Data.Aeson qualified as Aeson
 import Data.String.Interpolate (i)
@@ -181,13 +182,14 @@ data Error
   | PostgresSesssionError Hasql.Session.SessionError
   | EmptyUpdateOperation
 
-displayError :: Error -> String
-displayError = \case
-  ConfigParseError err -> "Could not parse the config, error:\n" <> err
-  PostgresConnectionError connectionError ->
-    "Could not connect to postgres" <> maybe "" ((", error:\n" <>) . decodeUtf8) connectionError
-  PostgresSesssionError err -> "Encountered a Postgres session error:\n" <> show err
-  EmptyUpdateOperation -> "There must be something to update! Please provide some details that you want to update in the task."
+displayError :: Error -> IO ()
+displayError =
+  putStrLn . Color.red . \case
+    ConfigParseError err -> "Could not parse the config, error:\n" <> err
+    PostgresConnectionError connectionError ->
+      "Could not connect to postgres" <> maybe "" ((", error:\n" <>) . decodeUtf8) connectionError
+    PostgresSesssionError err -> "Encountered a Postgres session error:\n" <> show err
+    EmptyUpdateOperation -> "There must be something to update! Please provide some details that you want to update in the task."
 
 withPostgresConnection :: (Hasql.Connection.Connection -> Postgres.Schema -> Postgres.TableName -> ExceptT Error IO a) -> ExceptT Error IO a
 withPostgresConnection f = do
@@ -223,7 +225,7 @@ main = do
                 $ Postgres.listNonCompletedTasks schema table
           lift $ traverse_ (putStrLn . toString . Task.display tz) tasks
 
-      whenLeft_ eitherError (putStrLn . displayError)
+      whenLeft_ eitherError displayError
     CompleteTask index -> do
       eitherError <- runExceptT
         $ withPostgresConnection
@@ -236,7 +238,7 @@ main = do
             . Rel8.run_
             . Rel8.update
             $ Postgres.completeTask schema table index
-      whenLeft_ eitherError (putStrLn . displayError)
+      whenLeft_ eitherError displayError
     Init method ->
       case method of
         Postgres -> do
@@ -259,7 +261,7 @@ main = do
                   	"parent" bigint,
                   	"tags" text);
                 |]
-          whenLeft_ eitherError (putStrLn . displayError)
+          whenLeft_ eitherError displayError
     List -> do
       tz <- getCurrentTimeZone
       eitherError <- runExceptT $ do
@@ -275,7 +277,7 @@ main = do
               . Rel8.select
               $ Postgres.listNonCompletedTasks schema table
           traverse_ (putStrLn . toString . Task.display tz) tasks
-      whenLeft_ eitherError (putStrLn . displayError)
+      whenLeft_ eitherError displayError
     Setup method ->
       case method of
         Postgres -> do
@@ -309,6 +311,6 @@ main = do
             . Rel8.run_
             . Rel8.update
             $ Postgres.Update.updateTask schema table index neUpdates
-      whenLeft_ eitherError (putStrLn . displayError)
+      whenLeft_ eitherError displayError
     Version ->
       putStrLn $ "todo v0.1.1.1"

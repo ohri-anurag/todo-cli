@@ -28,10 +28,10 @@ import Options.Applicative
     command,
     eitherReader,
     execParser,
+    flag',
     fullDesc,
     help,
     helpDoc,
-    helper,
     hsubparser,
     info,
     long,
@@ -62,6 +62,7 @@ data Command
   | List
   | Setup SetupMethod
   | UpdateTask Int64 Postgres.Insert.UpdateTaskOptions
+  | Version
 
 data SetupMethod = Postgres
 
@@ -73,29 +74,29 @@ zonedTimeReader = str >>= ISO8601.iso8601ParseM
 
 commandParser :: Parser Command
 commandParser =
-  hsubparser
-    ( mconcat
-        [ command "add"
-            $ info (AddTask <$> addTaskOptionsParser)
-            $ progDesc "Adds a new task",
-          command "complete"
-            $ info (CompleteTask <$> completeParser)
-            $ progDesc "Mark a task as finished",
-          command "init"
-            $ info (Init <$> setupMethodParser)
-            $ progDesc "Initialise the task storage as configured via the setup command",
-          command "list"
-            $ info (pure List)
-            $ progDesc "List all the incomplete tasks",
-          command "setup"
-            $ info (Setup <$> setupMethodParser)
-            $ progDesc "Create a config file for the selected storage method. Currently only Postgres is supported.",
-          command "update"
-            $ info (UpdateTask <$> updateParser <*> updateTaskOptionsParser)
-            $ progDesc "Update an existing task"
-        ]
-    )
-    <**> helper
+  flag' Version (mconcat [short 'v', long "version", help "Get the current version of todo"])
+    <|> hsubparser
+      ( mconcat
+          [ command "add"
+              $ info (AddTask <$> addTaskOptionsParser)
+              $ progDesc "Adds a new task",
+            command "complete"
+              $ info (CompleteTask <$> completeParser)
+              $ progDesc "Mark a task as finished",
+            command "init"
+              $ info (Init <$> setupMethodParser)
+              $ progDesc "Initialise the task storage as configured via the setup command",
+            command "list"
+              $ info (pure List)
+              $ progDesc "List all the incomplete tasks",
+            command "setup"
+              $ info (Setup <$> setupMethodParser)
+              $ progDesc "Create a config file for the selected storage method. Currently only Postgres is supported.",
+            command "update"
+              $ info (UpdateTask <$> updateParser <*> updateTaskOptionsParser)
+              $ progDesc "Update an existing task"
+          ]
+      )
 
 taskOptionsParser :: (forall a. Parser a -> Parser (f a)) -> Parser (Postgres.Insert.TaskOptions f)
 taskOptionsParser toF = do
@@ -293,3 +294,5 @@ main = do
             . Rel8.update
             $ Postgres.Update.updateTask schema table index neUpdates
       whenLeft_ eitherError print
+    Version ->
+      putStrLn $ "todo v0.1.1.1"

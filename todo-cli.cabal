@@ -125,6 +125,7 @@ test-suite spec
   other-modules:
     Postgres.TaskTest
     RepeatTest
+    TaskTest
 
   build-tool-depends: tasty-discover:tasty-discover ^>=5.2
   build-depends:

@@ -221,7 +221,7 @@ main = do
             . Rel8.insert
             $ Postgres.Insert.insertTask schema table taskOptions
 
-      whenLeft_ eitherError displayError
+      bitraverse_ displayError (const $ TIO.putStrLn $ Color.green "Task added successfully!") eitherError
     CompleteTask index -> do
       eitherError <- runExceptT
         $ withPostgresConnection
@@ -234,7 +234,7 @@ main = do
             . Rel8.run_
             . Rel8.update
             $ Postgres.completeTask schema table index
-      whenLeft_ eitherError displayError
+      bitraverse_ displayError (const $ TIO.putStrLn $ Color.green "Task completed successfully!") eitherError
     Init method ->
       case method of
         Postgres -> do
@@ -257,7 +257,7 @@ main = do
                   	"parent" bigint,
                   	"tags" text);
                 |]
-          whenLeft_ eitherError displayError
+          bitraverse_ displayError (const $ TIO.putStrLn $ Color.green "Initialsed configuration successfully!") eitherError
     List -> do
       tz <- getCurrentTimeZone
       eitherError <- runExceptT $ do
@@ -273,7 +273,7 @@ main = do
               . Rel8.select
               $ Postgres.listNonCompletedTasks schema table
           traverse_ (putStrLn . toString . Task.display tz palette) tasks
-      whenLeft_ eitherError displayError
+      bitraverse_ displayError (const $ pure ()) eitherError
     Setup method ->
       case method of
         Postgres -> do
@@ -303,6 +303,6 @@ main = do
             . Rel8.run_
             . Rel8.update
             $ Postgres.Update.updateTask schema table index neUpdates
-      whenLeft_ eitherError displayError
+      bitraverse_ displayError (const $ TIO.putStrLn $ Color.green "Task updated successfully!") eitherError
     Version ->
       putStrLn $ "todo v0.1.1.1"

@@ -15,3 +15,6 @@ colour c s =
 
 red :: Text -> Text
 red = colour (sRGB24read "#aa0000")
+
+green :: Text -> Text
+green = colour (sRGB24read "#00aa00")

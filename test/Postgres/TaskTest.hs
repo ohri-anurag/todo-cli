@@ -5,7 +5,8 @@ module Postgres.TaskTest where
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 import NonEmptyText qualified
 import Postgres.Details (Schema (..), TableName (..))
-import Postgres.Task (TaskOptions (..), completeTask, insertTask, listNonCompletedTasks)
+import Postgres.Task (completeTask, listNonCompletedTasks)
+import Postgres.Task.Insert (TaskOptions (..), insertTask)
 import Rel8 (showInsert, showQuery, showUpdate)
 import Relude
 import Repeat qualified
@@ -20,7 +21,7 @@ test_insertTask =
     . showInsert
     . insertTask (Schema $$(NonEmptyText.make "public")) (TableName $$(NonEmptyText.make "tasks"))
     $ TaskOptions
-      { description = $$(NonEmptyText.make "This is a test"),
+      { description = Identity $$(NonEmptyText.make "This is a test"),
         due = Just $ posixSecondsToUTCTime 1779453522,
         remindAt = Just $ posixSecondsToUTCTime 1779451111,
         repeatAfter = Just Repeat.Daily,

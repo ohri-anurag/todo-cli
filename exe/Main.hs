@@ -45,6 +45,8 @@ import Options.Applicative
   )
 import Postgres.Details qualified as Postgres
 import Postgres.Task qualified as Postgres
+import Postgres.Task.Insert qualified as Postgres.Insert
+import Postgres.Task.Update qualified as Postgres.Update
 import Refined (refineError)
 import Rel8 qualified
 import Relude
@@ -54,15 +56,14 @@ import System.FilePath ((</>))
 import Task qualified
 
 data Command
-  = AddTask Postgres.TaskOptions
+  = AddTask Postgres.Insert.AddTaskOptions
   | CompleteTask Int64
   | Init SetupMethod
   | List
   | Setup SetupMethod
-  deriving (Show)
+  | UpdateTask Int64 Postgres.Insert.UpdateTaskOptions
 
 data SetupMethod = Postgres
-  deriving (Show)
 
 nonEmptyTextReader :: ReadM NonEmptyText
 nonEmptyTextReader = eitherReader (bimap show NonEmptyText . refineError . toText)
@@ -75,7 +76,7 @@ commandParser =
   hsubparser
     ( mconcat
         [ command "add"
-            $ info (AddTask <$> taskOptionsParser)
+            $ info (AddTask <$> addTaskOptionsParser)
             $ progDesc "Adds a new task",
           command "complete"
             $ info (CompleteTask <$> completeParser)
@@ -88,15 +89,19 @@ commandParser =
             $ progDesc "List all the incomplete tasks",
           command "setup"
             $ info (Setup <$> setupMethodParser)
-            $ progDesc "Create a config file for the selected storage method. Currently only Postgres is supported."
+            $ progDesc "Create a config file for the selected storage method. Currently only Postgres is supported.",
+          command "update"
+            $ info (UpdateTask <$> updateParser <*> updateTaskOptionsParser)
+            $ progDesc "Update an existing task"
         ]
     )
     <**> helper
 
-taskOptionsParser :: Parser Postgres.TaskOptions
-taskOptionsParser = do
+taskOptionsParser :: (forall a. Parser a -> Parser (f a)) -> Parser (Postgres.Insert.TaskOptions f)
+taskOptionsParser toF = do
   description <-
-    argument nonEmptyTextReader
+    toF
+      $ argument nonEmptyTextReader
       $ mconcat [metavar "DESC", help "A text based description of the task"]
   due <- optional $ option zonedTimeReader $ mconcat [short 'd', long "due", help "Due date in ISO8601 format (yyyy-MM-ddThh:mm:ss+hh:mm)."]
   remindAt <- optional $ option zonedTimeReader $ mconcat [long "remind-at", help "When to receive a reminder for this task in ISO8601 format (yyyy-MM-ddThh:mm:ss+hh:mm)."]
@@ -121,7 +126,7 @@ taskOptionsParser = do
         ]
   tags <- optional $ fmap (Text.splitOn ",") $ strOption $ mconcat [short 't', long "tags", help "Comma separated list of tags"]
   pure
-    Postgres.TaskOptions
+    Postgres.Insert.TaskOptions
       { description = description,
         due = zonedTimeToUTC <$> due,
         remindAt = zonedTimeToUTC <$> remindAt,
@@ -129,9 +134,21 @@ taskOptionsParser = do
         tags = nonEmpty $ mapMaybe NonEmptyText.parse $ fold tags
       }
 
+addTaskOptionsParser :: Parser Postgres.Insert.AddTaskOptions
+addTaskOptionsParser = taskOptionsParser (fmap Identity)
+
+updateTaskOptionsParser :: Parser Postgres.Insert.UpdateTaskOptions
+updateTaskOptionsParser = taskOptionsParser optional
+
+idParser :: String -> Parser Int64
+idParser message =
+  argument auto $ mconcat [metavar "INDEX", help message]
+
+updateParser :: Parser Int64
+updateParser = idParser "The index of the task that needs to be updated"
+
 completeParser :: Parser Int64
-completeParser =
-  argument auto $ mconcat [metavar "INDEX", help "The index of the task that needs to be marked as completed"]
+completeParser = idParser "The index of the task that needs to be marked as completed"
 
 setupMethodParser :: Parser SetupMethod
 setupMethodParser =
@@ -150,6 +167,7 @@ data Error
   = ConfigParseError String
   | PostgresConnectionError Hasql.Connection.ConnectionError
   | PostgresSesssionError Hasql.Session.SessionError
+  | EmptyUpdateOperation
   deriving (Show)
 
 withPostgresConnection :: (Hasql.Connection.Connection -> Postgres.Schema -> Postgres.TableName -> ExceptT Error IO a) -> ExceptT Error IO a
@@ -179,7 +197,7 @@ main = do
               Hasql.Transaction.statement ()
                 . Rel8.run_
                 . Rel8.insert
-                $ Postgres.insertTask schema table taskOptions
+                $ Postgres.Insert.insertTask schema table taskOptions
               Hasql.Transaction.statement ()
                 . Rel8.run
                 . Rel8.select
@@ -251,3 +269,24 @@ main = do
                 schema = Postgres.Schema $$(NonEmptyText.make "schema name"),
                 connString = $$(NonEmptyText.make "postgres connection string")
               }
+    UpdateTask index Postgres.Insert.TaskOptions {..} -> do
+      let updates =
+            catMaybes
+              [ Postgres.Update.UpdateDescription <$> description,
+                Postgres.Update.UpdateDue <$> due,
+                Postgres.Update.UpdateRemindAt <$> remindAt,
+                Postgres.Update.UpdateRepeatAfter <$> repeatAfter,
+                Postgres.Update.UpdateTags <$> tags
+              ]
+      eitherError <- runExceptT $ do
+        neUpdates <- maybeToExceptT EmptyUpdateOperation . hoistMaybe $ nonEmpty updates
+        withPostgresConnection $ \conn schema table ->
+          withExceptT PostgresSesssionError
+            $ ExceptT
+            $ flip Hasql.Session.run conn
+            . Hasql.Transaction.Sessions.transaction Hasql.Transaction.Sessions.Serializable Hasql.Transaction.Sessions.Write
+            $ Hasql.Transaction.statement ()
+            . Rel8.run_
+            . Rel8.update
+            $ Postgres.Update.updateTask schema table index neUpdates
+      whenLeft_ eitherError print

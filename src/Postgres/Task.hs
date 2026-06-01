@@ -4,21 +4,16 @@
 
 module Postgres.Task where
 
-import Data.Foldable1 (fold1)
-import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map qualified as Map
 import Data.Text qualified as Text
 import Data.Time (UTCTime)
 import NonEmptyText (NonEmptyText (..))
-import NonEmptyText qualified
 import Postgres.Details (Schema (..), TableName (..))
 import Refined (refineFail)
 import Rel8
   ( Column,
     Expr,
-    Insert (..),
     Name,
-    OnConflict (DoNothing),
     QualifiedName (..),
     Query,
     Rel8able,
@@ -30,8 +25,6 @@ import Rel8
     filter,
     lit,
     not_,
-    unsafeDefault,
-    values,
     (==.),
   )
 import Rel8.Expr.Time (now)
@@ -132,39 +125,6 @@ taskSchema (Schema schema) (TableName table) =
             tags = "tags"
           }
     }
-
-data TaskOptions = TaskOptions
-  { description :: NonEmptyText,
-    due :: Maybe UTCTime,
-    remindAt :: Maybe UTCTime,
-    repeatAfter :: Maybe Repeat,
-    tags :: Maybe (NonEmpty NonEmptyText)
-  }
-  deriving (Show)
-
-insertTask :: Schema -> TableName -> TaskOptions -> Insert ()
-insertTask schema table TaskOptions {..} =
-  Insert
-    { into = taskSchema schema table,
-      rows = values [task'],
-      onConflict = DoNothing,
-      returning = NoReturning
-    }
-  where
-    task' :: Task Expr
-    task' =
-      Task
-        { createdAt = now,
-          updatedAt = now,
-          id = unsafeDefault,
-          isCompleted = lit False,
-          description = lit description,
-          due = lit due,
-          remindAt = lit remindAt,
-          repeatAfter = lit repeatAfter,
-          parent = lit Nothing,
-          tags = lit $ (fold1 . NonEmpty.intersperse $$(NonEmptyText.make ",")) <$> tags
-        }
 
 completeTask :: Schema -> TableName -> Int64 -> Update ()
 completeTask schema table searchId =

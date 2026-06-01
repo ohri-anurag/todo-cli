@@ -24,6 +24,7 @@ test_insertTask =
     $ TaskOptions
       { description = Identity $$(NonEmptyText.make "This is a test"),
         due = Just $ posixSecondsToUTCTime 1779453522,
+        parent = Just 2,
         remindAt = Just $ posixSecondsToUTCTime 1779451111,
         repeatAfter = Just Repeat.Daily,
         tags =
@@ -60,6 +61,7 @@ test_updateTask =
       2
       ( UpdateDescription $$(NonEmptyText.make "Test")
           :| [ UpdateDue (posixSecondsToUTCTime 1779453522),
+               UpdateParent 2,
                UpdateRemindAt (posixSecondsToUTCTime 1779451111),
                UpdateRepeatAfter Repeat.Daily,
                UpdateTags

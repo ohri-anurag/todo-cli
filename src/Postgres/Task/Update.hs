@@ -23,6 +23,7 @@ import Repeat (Repeat (..))
 data Updates
   = UpdateDescription NonEmptyText
   | UpdateDue UTCTime
+  | UpdateParent Int64
   | UpdateRemindAt UTCTime
   | UpdateRepeatAfter Repeat.Repeat
   | UpdateTags (NonEmpty NonEmptyText)
@@ -33,6 +34,7 @@ updateTask schema table updateId updates =
       update row = \case
         UpdateDescription description -> row {description = lit description}
         UpdateDue due -> row {due = lit $ Just due}
+        UpdateParent parent -> row {parent = lit $ Just parent}
         UpdateRemindAt remindAt -> row {remindAt = lit $ Just remindAt}
         UpdateRepeatAfter repeatAfter -> row {repeatAfter = lit $ Just repeatAfter}
         UpdateTags tags -> row {tags = lit $ Just . fold1 . NonEmpty.intersperse $$(NonEmptyText.make ",") $ tags}

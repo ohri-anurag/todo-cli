@@ -104,6 +104,7 @@ taskOptionsParser toF = do
       $ argument nonEmptyTextReader
       $ mconcat [metavar "DESC", help "A text based description of the task"]
   due <- optional $ option zonedTimeReader $ mconcat [short 'd', long "due", help "Due date in ISO8601 format (yyyy-MM-ddThh:mm:ss+hh:mm)."]
+  parent <- optional $ option auto $ mconcat [short 'p', long "parent", help "The ID of this task's parent"]
   remindAt <- optional $ option zonedTimeReader $ mconcat [long "remind-at", help "When to receive a reminder for this task in ISO8601 format (yyyy-MM-ddThh:mm:ss+hh:mm)."]
   repeatAfter <-
     optional
@@ -129,6 +130,7 @@ taskOptionsParser toF = do
     Postgres.Insert.TaskOptions
       { description = description,
         due = zonedTimeToUTC <$> due,
+        parent = parent,
         remindAt = zonedTimeToUTC <$> remindAt,
         repeatAfter = repeatAfter,
         tags = nonEmpty $ mapMaybe NonEmptyText.parse $ fold tags
@@ -274,6 +276,7 @@ main = do
             catMaybes
               [ Postgres.Update.UpdateDescription <$> description,
                 Postgres.Update.UpdateDue <$> due,
+                Postgres.Update.UpdateParent <$> parent,
                 Postgres.Update.UpdateRemindAt <$> remindAt,
                 Postgres.Update.UpdateRepeatAfter <$> repeatAfter,
                 Postgres.Update.UpdateTags <$> tags

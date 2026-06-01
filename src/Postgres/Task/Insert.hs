@@ -25,6 +25,7 @@ import Repeat (Repeat (..))
 data TaskOptions f = TaskOptions
   { description :: f NonEmptyText,
     due :: Maybe UTCTime,
+    parent :: Maybe Int64,
     remindAt :: Maybe UTCTime,
     repeatAfter :: Maybe Repeat,
     tags :: Maybe (NonEmpty NonEmptyText)
@@ -54,6 +55,6 @@ insertTask schema table TaskOptions {..} =
           due = lit due,
           remindAt = lit remindAt,
           repeatAfter = lit repeatAfter,
-          parent = lit Nothing,
+          parent = lit parent,
           tags = lit $ (fold1 . NonEmpty.intersperse $$(NonEmptyText.make ",")) <$> tags
         }

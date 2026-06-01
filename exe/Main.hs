@@ -305,4 +305,4 @@ main = do
             $ Postgres.Update.updateTask schema table index neUpdates
       bitraverse_ displayError (const $ TIO.putStrLn $ Color.green "Task updated successfully!") eitherError
     Version ->
-      putStrLn $ "todo v0.1.1.1"
+      putStrLn $ "todo v0.1.2.0"

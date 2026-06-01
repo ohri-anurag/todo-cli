@@ -24,6 +24,18 @@ data Palette = Palette
     subTasks :: Colour Float
   }
 
+defaultPalette :: Palette
+defaultPalette =
+  Palette
+    { id = sRGB24read "#00aa00",
+      description = sRGB24read "#00aaaa",
+      due = sRGB24read "#aaaa00",
+      remindAt = sRGB24read "#faa306",
+      repeat = sRGB24read "#ed7ffc",
+      tags = sRGB24read "#7ffcc0",
+      subTasks = sRGB24read "#a37ffc"
+    }
+
 instance Aeson.ToJSON Palette where
   toJSON Palette {..} =
     Aeson.object
@@ -57,16 +69,7 @@ defaultDetails :: Details
 defaultDetails =
   Details
     { postgres = Postgres.defaultDetails,
-      palette =
-        Palette
-          { id = sRGB24read "#00aa00",
-            description = sRGB24read "#00aaaa",
-            due = sRGB24read "#aaaa00",
-            remindAt = sRGB24read "#faa306",
-            repeat = sRGB24read "#ed7ffc",
-            tags = sRGB24read "#7ffcc0",
-            subTasks = sRGB24read "#a37ffc"
-          }
+      palette = defaultPalette
     }
 
 options :: Aeson.Options

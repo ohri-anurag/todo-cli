@@ -9,4 +9,4 @@ SET "created_at" = "public"."tasks"."created_at",
     "repeat_after" = "public"."tasks"."repeat_after",
     "parent" = "public"."tasks"."parent",
     "tags" = "public"."tasks"."tags"
-WHERE "public"."tasks"."id" = (CAST(2 AS "int8"))
+WHERE ("public"."tasks"."id" = (CAST(2 AS "int8"))) OR (((("public"."tasks"."parent") IS NULL) AND ((CAST(2 AS "int8")) IS NULL)) OR (("public"."tasks"."parent" = (CAST(2 AS "int8"))) AND (COALESCE("public"."tasks"."parent" = (CAST(2 AS "int8")),FALSE))))

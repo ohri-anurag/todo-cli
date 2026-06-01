@@ -1,20 +1,21 @@
-ID: 1
-Description: PARENT
-Due: Friday, May 22, 2026 at 12:38
-Remind at: Friday, May 22, 2026 at 11:58
-Repeats: daily
-Tags: #parent
-Sub-Tasks:
-  ID: 2
-  Description: CHILD
-  Due: Friday, May 22, 2026 at 12:38
-  Remind at: Friday, May 22, 2026 at 11:58
-  Repeats: daily
-  Tags: #child
-  Sub-Tasks:
-    ID: 3
-    Description: GRANDCHILD
-    Due: Friday, May 22, 2026 at 12:38
-    Remind at: Friday, May 22, 2026 at 11:58
-    Repeats: daily
-    Tags: #grandchild
+[1;38;2;0;170;0mID: 1[m
+[1;38;2;0;170;170mDescription: PARENT[m
+[1;38;2;170;170;0mDue: Friday, May 22, 2026 at 12:38[m
+[1;38;2;250;163;6mRemind at: Friday, May 22, 2026 at 11:58[m
+[1;38;2;237;127;252mRepeats: daily[m
+[1;38;2;127;252;192mTags: #parent[m
+[1;38;2;163;127;252mSub-Tasks:
+  [1;38;2;0;170;0mID: 2[m
+  [1;38;2;0;170;170mDescription: CHILD[m
+  [1;38;2;170;170;0mDue: Friday, May 22, 2026 at 12:38[m
+  [1;38;2;250;163;6mRemind at: Friday, May 22, 2026 at 11:58[m
+  [1;38;2;237;127;252mRepeats: daily[m
+  [1;38;2;127;252;192mTags: #child[m
+  [1;38;2;163;127;252mSub-Tasks:
+    [1;38;2;0;170;0mID: 3[m
+    [1;38;2;0;170;170mDescription: GRANDCHILD[m
+    [1;38;2;170;170;0mDue: Friday, May 22, 2026 at 12:38[m
+    [1;38;2;250;163;6mRemind at: Friday, May 22, 2026 at 11:58[m
+    [1;38;2;237;127;252mRepeats: daily[m
+    [1;38;2;127;252;192mTags: #grandchild[m
+[m[m

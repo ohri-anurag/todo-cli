@@ -7,6 +7,7 @@ import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 import NonEmptyText qualified
 import Relude
 import Repeat qualified
+import Setup qualified
 import Task qualified
 import Test.Tasty (TestTree)
 import Test.Tasty.Golden (goldenVsString)
@@ -16,7 +17,7 @@ test_display =
   goldenVsString "display" "test/golden/display.golden.txt"
     . pure
     . encodeUtf8
-    . Task.display utc
+    . Task.display utc Setup.defaultPalette
     $ Task.TaskWithSubTasks
       Task.Task
         { description = $$(NonEmptyText.make "PARENT"),

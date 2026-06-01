@@ -88,7 +88,7 @@ commandParser =
               $ progDesc "Adds a new task",
             command "complete"
               $ info (CompleteTask <$> completeParser)
-              $ progDesc "Mark a task as finished",
+              $ progDesc "Mark a task (and all its sub-tasks) as finished",
             command "list"
               $ info (pure List)
               $ progDesc "List all the incomplete tasks",

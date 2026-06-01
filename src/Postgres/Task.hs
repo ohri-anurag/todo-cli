@@ -26,6 +26,7 @@ import Rel8
     lit,
     not_,
     (==.),
+    (||.),
   )
 import Rel8.Expr.Time (now)
 import Relude hiding (filter, id)
@@ -132,7 +133,7 @@ completeTask schema table searchId =
     { target = taskSchema schema table,
       from = pure (),
       set = \_from row -> row {isCompleted = lit True, updatedAt = now},
-      updateWhere = \_from Task {id} -> id ==. lit searchId,
+      updateWhere = \_from Task {id, parent} -> id ==. lit searchId ||. parent ==. lit (Just searchId),
       returning = NoReturning
     }
 

@@ -16,6 +16,7 @@ import Rel8
     lit,
     (==.),
   )
+import Rel8.Expr.Time (now)
 import Relude hiding (id)
 import Repeat (Repeat (..))
 
@@ -38,7 +39,7 @@ updateTask schema table updateId updates =
    in Update
         { target = taskSchema schema table,
           from = pure (),
-          set = \_from row -> foldl' update row updates,
+          set = \_from row -> (foldl' update row updates) {updatedAt = now},
           updateWhere = \_from Task {id} -> id ==. lit updateId,
           returning = NoReturning
         }

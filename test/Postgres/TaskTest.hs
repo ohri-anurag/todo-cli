@@ -7,6 +7,7 @@ import NonEmptyText qualified
 import Postgres.Details (Schema (..), TableName (..))
 import Postgres.Task (completeTask, listNonCompletedTasks)
 import Postgres.Task.Insert (TaskOptions (..), insertTask)
+import Postgres.Task.Update (Updates (..), updateTask)
 import Rel8 (showInsert, showQuery, showUpdate)
 import Relude
 import Repeat qualified
@@ -46,3 +47,24 @@ test_listNonCompletedTasks =
     . encodeUtf8
     . showQuery
     $ listNonCompletedTasks (Schema $$(NonEmptyText.make "public")) (TableName $$(NonEmptyText.make "tasks"))
+
+test_updateTask :: TestTree
+test_updateTask =
+  goldenVsString "updateTask" "test/golden/updateTask.golden.txt"
+    $ pure
+    . encodeUtf8
+    . showUpdate
+    $ updateTask
+      (Schema $$(NonEmptyText.make "public"))
+      (TableName $$(NonEmptyText.make "tasks"))
+      2
+      ( UpdateDescription $$(NonEmptyText.make "Test")
+          :| [ UpdateDue (posixSecondsToUTCTime 1779453522),
+               UpdateRemindAt (posixSecondsToUTCTime 1779451111),
+               UpdateRepeatAfter Repeat.Daily,
+               UpdateTags
+                 ( $$(NonEmptyText.make "simple")
+                     :| [$$(NonEmptyText.make "test")]
+                 )
+             ]
+      )

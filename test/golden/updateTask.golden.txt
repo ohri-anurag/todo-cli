@@ -1,0 +1,12 @@
+UPDATE "public"."tasks"
+SET "created_at" = "public"."tasks"."created_at",
+    "updated_at" = CAST("now"() AS "timestamptz"),
+    "id" = "public"."tasks"."id",
+    "is_completed" = "public"."tasks"."is_completed",
+    "description" = CAST(E'Test' AS "text"),
+    "due" = CAST('2026-05-22T12:38:42Z' AS "timestamptz"),
+    "remind_at" = CAST('2026-05-22T11:58:31Z' AS "timestamptz"),
+    "repeat_after" = CAST(ARRAY[E'd',E'a',E'i',E'l',E'y'] AS "bpchar"(1)[]),
+    "parent" = "public"."tasks"."parent",
+    "tags" = CAST(E'simple,test' AS "text")
+WHERE "public"."tasks"."id" = (CAST(2 AS "int8"))

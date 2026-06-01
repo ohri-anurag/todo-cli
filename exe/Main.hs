@@ -26,12 +26,14 @@ import Options.Applicative
     argument,
     auto,
     command,
+    commandGroup,
     eitherReader,
     execParser,
     flag',
     fullDesc,
     help,
     helpDoc,
+    helper,
     hsubparser,
     info,
     long,
@@ -77,26 +79,33 @@ commandParser =
   flag' Version (mconcat [short 'v', long "version", help "Get the current version of todo"])
     <|> hsubparser
       ( mconcat
-          [ command "add"
+          [ commandGroup "Task CRUD",
+            command "add"
               $ info (AddTask <$> addTaskOptionsParser)
               $ progDesc "Adds a new task",
             command "complete"
               $ info (CompleteTask <$> completeParser)
               $ progDesc "Mark a task as finished",
-            command "init"
-              $ info (Init <$> setupMethodParser)
-              $ progDesc "Initialise the task storage as configured via the setup command",
             command "list"
               $ info (pure List)
               $ progDesc "List all the incomplete tasks",
-            command "setup"
-              $ info (Setup <$> setupMethodParser)
-              $ progDesc "Create a config file for the selected storage method. Currently only Postgres is supported.",
             command "update"
               $ info (UpdateTask <$> updateParser <*> updateTaskOptionsParser)
               $ progDesc "Update an existing task"
           ]
       )
+    <|> hsubparser
+      ( mconcat
+          [ commandGroup "Todo Setup",
+            command "init"
+              $ info (Init <$> setupMethodParser)
+              $ progDesc "Initialise the task storage as configured via the setup command",
+            command "setup"
+              $ info (Setup <$> setupMethodParser)
+              $ progDesc "Create a config file for the selected storage method. Currently only Postgres is supported."
+          ]
+      )
+    <**> helper
 
 taskOptionsParser :: (forall a. Parser a -> Parser (f a)) -> Parser (Postgres.Insert.TaskOptions f)
 taskOptionsParser toF = do

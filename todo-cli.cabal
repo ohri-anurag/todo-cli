@@ -82,6 +82,7 @@ library
     Postgres.Task.Insert
     Postgres.Task.Update
     Repeat
+    Setup
     Task
 
   build-depends:

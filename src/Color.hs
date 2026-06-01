@@ -3,13 +3,15 @@ module Color where
 import Data.Colour.SRGB (Colour, sRGB24read)
 import Relude
 import System.Console.ANSI (setSGRCode)
-import System.Console.ANSI.Types (ConsoleLayer (..), SGR (..))
+import System.Console.ANSI.Types (ConsoleIntensity (..), ConsoleLayer (..), SGR (..))
 
-redColour :: Colour Float
-redColour = sRGB24read "#ff0000"
+colour :: Colour Float -> Text -> Text
+colour c s =
+  mconcat
+    [ toText $ setSGRCode [SetConsoleIntensity BoldIntensity, SetRGBColor Foreground c],
+      s,
+      toText $ setSGRCode []
+    ]
 
-colour :: Colour Float -> String -> String
-colour c s = mconcat [setSGRCode [SetRGBColor Foreground c], s, setSGRCode []]
-
-red :: String -> String
-red = colour redColour
+red :: Text -> Text
+red = colour (sRGB24read "#aa0000")

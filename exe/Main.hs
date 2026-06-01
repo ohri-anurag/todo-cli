@@ -10,6 +10,7 @@ import Control.Monad.Except (withExceptT)
 import Data.Aeson qualified as Aeson
 import Data.String.Interpolate (i)
 import Data.Text qualified as Text
+import Data.Text.IO qualified as TIO
 import Data.Time (ZonedTime, getCurrentTimeZone, zonedTimeToUTC)
 import Data.Time.Format.ISO8601 qualified as ISO8601
 import Hasql.Connection qualified
@@ -54,6 +55,7 @@ import Refined (refineError)
 import Rel8 qualified
 import Relude
 import Repeat qualified
+import Setup qualified
 import System.Directory (XdgDirectory (..), createDirectoryIfMissing, getXdgDirectory)
 import System.FilePath ((</>))
 import Task qualified
@@ -184,20 +186,21 @@ data Error
 
 displayError :: Error -> IO ()
 displayError =
-  putStrLn . Color.red . \case
-    ConfigParseError err -> "Could not parse the config, error:\n" <> err
+  TIO.putStrLn . Color.red . \case
+    ConfigParseError err -> "Could not parse the config, error:\n" <> toText err
     PostgresConnectionError connectionError ->
       "Could not connect to postgres" <> maybe "" ((", error:\n" <>) . decodeUtf8) connectionError
     PostgresSesssionError err -> "Encountered a Postgres session error:\n" <> show err
     EmptyUpdateOperation -> "There must be something to update! Please provide some details that you want to update in the task."
 
-withPostgresConnection :: (Hasql.Connection.Connection -> Postgres.Schema -> Postgres.TableName -> ExceptT Error IO a) -> ExceptT Error IO a
+withPostgresConnection :: (Hasql.Connection.Connection -> Postgres.Schema -> Postgres.TableName -> Setup.Palette -> ExceptT Error IO a) -> ExceptT Error IO a
 withPostgresConnection f = do
   path <- lift $ getXdgDirectory XdgConfig "todo"
-  Postgres.Details {..} <- withExceptT ConfigParseError $ ExceptT $ Aeson.eitherDecodeFileStrict $ path </> "todo.config"
+  Setup.Details {postgres = Postgres.Details {..}, palette} <-
+    withExceptT ConfigParseError $ ExceptT $ Aeson.eitherDecodeFileStrict $ path </> "todo.config"
   let connSetting = Hasql.Connection.Setting.connection $ Hasql.Connection.Setting.Connection.string $ toText connString
   conn <- withExceptT PostgresConnectionError $ ExceptT $ Hasql.Connection.acquire [connSetting]
-  a <- f conn schema table
+  a <- f conn schema table palette
   lift $ Hasql.Connection.release conn
   pure a
 
@@ -206,30 +209,23 @@ main = do
   cmd <- execParser parserInfo
   case cmd of
     AddTask taskOptions -> do
-      tz <- getCurrentTimeZone
-      eitherError <- runExceptT $ do
-        withPostgresConnection $ \conn schema table -> do
-          tasks <- fmap Postgres.unpackAll
-            $ withExceptT PostgresSesssionError
-            $ ExceptT
-            $ flip Hasql.Session.run conn
+      eitherError <- runExceptT
+        $ withPostgresConnection
+        $ \conn schema table _ ->
+          withExceptT PostgresSesssionError
+            . ExceptT
+            . flip Hasql.Session.run conn
             . Hasql.Transaction.Sessions.transaction Hasql.Transaction.Sessions.Serializable Hasql.Transaction.Sessions.Write
-            $ do
-              Hasql.Transaction.statement ()
-                . Rel8.run_
-                . Rel8.insert
-                $ Postgres.Insert.insertTask schema table taskOptions
-              Hasql.Transaction.statement ()
-                . Rel8.run
-                . Rel8.select
-                $ Postgres.listNonCompletedTasks schema table
-          lift $ traverse_ (putStrLn . toString . Task.display tz) tasks
+            . Hasql.Transaction.statement ()
+            . Rel8.run_
+            . Rel8.insert
+            $ Postgres.Insert.insertTask schema table taskOptions
 
       whenLeft_ eitherError displayError
     CompleteTask index -> do
       eitherError <- runExceptT
         $ withPostgresConnection
-        $ \conn schema table -> do
+        $ \conn schema table _ ->
           withExceptT PostgresSesssionError
             $ ExceptT
             $ flip Hasql.Session.run conn
@@ -243,7 +239,7 @@ main = do
       case method of
         Postgres -> do
           eitherError <- runExceptT $ do
-            withPostgresConnection $ \conn (Postgres.Schema schema) (Postgres.TableName table) ->
+            withPostgresConnection $ \conn (Postgres.Schema schema) (Postgres.TableName table) _ ->
               withExceptT PostgresSesssionError
                 $ ExceptT
                 $ flip Hasql.Session.run conn
@@ -265,7 +261,7 @@ main = do
     List -> do
       tz <- getCurrentTimeZone
       eitherError <- runExceptT $ do
-        withPostgresConnection $ \conn schema table -> do
+        withPostgresConnection $ \conn schema table palette -> do
           tasks <-
             fmap Postgres.unpackAll
               $ withExceptT PostgresSesssionError
@@ -276,7 +272,7 @@ main = do
               . Rel8.run
               . Rel8.select
               $ Postgres.listNonCompletedTasks schema table
-          traverse_ (putStrLn . toString . Task.display tz) tasks
+          traverse_ (putStrLn . toString . Task.display tz palette) tasks
       whenLeft_ eitherError displayError
     Setup method ->
       case method of
@@ -285,11 +281,7 @@ main = do
           createDirectoryIfMissing True path
           writeFileLBS (path </> "todo.config")
             $ Aeson.encode
-            $ Postgres.Details
-              { table = Postgres.TableName $$(NonEmptyText.make "table name"),
-                schema = Postgres.Schema $$(NonEmptyText.make "schema name"),
-                connString = $$(NonEmptyText.make "postgres connection string")
-              }
+            $ Setup.defaultDetails
     UpdateTask index Postgres.Insert.TaskOptions {..} -> do
       let updates =
             catMaybes
@@ -302,7 +294,7 @@ main = do
               ]
       eitherError <- runExceptT $ do
         neUpdates <- maybeToExceptT EmptyUpdateOperation . hoistMaybe $ nonEmpty updates
-        withPostgresConnection $ \conn schema table ->
+        withPostgresConnection $ \conn schema table _ ->
           withExceptT PostgresSesssionError
             $ ExceptT
             $ flip Hasql.Session.run conn

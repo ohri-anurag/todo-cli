@@ -21,7 +21,7 @@ name:            todo-cli
 -- PVP summary:     +-+------- breaking API changes
 --                  | | +----- non-breaking API additions
 --                  | | | +--- code changes with no API change
-version:         0.1.2.0
+version:         0.1.2.1
 
 -- A short (one-line) description of the package.
 -- synopsis:
@@ -90,7 +90,6 @@ library
     , ansi-terminal-types  ^>=1.1.3
     , colour               ^>=2.3.7
     , containers           ^>=0.7
-    , template-haskell     ^>=2.23.0.0
 
 executable todo
   -- Import common warning flags.

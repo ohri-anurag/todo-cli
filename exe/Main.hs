@@ -1,7 +1,6 @@
 {-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE MultilineStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE TemplateHaskell #-}
 
 module Main (main) where
 
@@ -51,7 +50,6 @@ import Postgres.Details qualified as Postgres
 import Postgres.Task qualified as Postgres
 import Postgres.Task.Insert qualified as Postgres.Insert
 import Postgres.Task.Update qualified as Postgres.Update
-import Refined (refineError)
 import Rel8 qualified
 import Relude
 import Repeat qualified
@@ -72,7 +70,7 @@ data Command
 data SetupMethod = Postgres
 
 nonEmptyTextReader :: ReadM NonEmptyText
-nonEmptyTextReader = eitherReader (bimap show NonEmptyText . refineError . toText)
+nonEmptyTextReader = eitherReader (NonEmptyText.parse . toText)
 
 zonedTimeReader :: ReadM ZonedTime
 zonedTimeReader = str >>= ISO8601.iso8601ParseM
@@ -146,7 +144,7 @@ taskOptionsParser toF = do
         parent = parent,
         remindAt = zonedTimeToUTC <$> remindAt,
         repeatAfter = repeatAfter,
-        tags = nonEmpty $ mapMaybe NonEmptyText.parse $ fold tags
+        tags = nonEmpty $ mapMaybe (either (const Nothing) Just . NonEmptyText.parse) $ fold tags
       }
 
 addTaskOptionsParser :: Parser Postgres.Insert.AddTaskOptions
@@ -305,4 +303,4 @@ main = do
             $ Postgres.Update.updateTask schema table index neUpdates
       bitraverse_ displayError (const $ TIO.putStrLn $ Color.green "Task updated successfully!") eitherError
     Version ->
-      putStrLn $ "todo v0.1.2.0"
+      putStrLn $ "todo v0.1.2.1"

@@ -1,12 +1,9 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module Postgres.Task.Update where
 
 import Data.Foldable1 (fold1)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Time (UTCTime)
 import NonEmptyText (NonEmptyText (..))
-import NonEmptyText qualified
 import Postgres.Details (Schema (..), TableName (..))
 import Postgres.Task (Task (..), taskSchema)
 import Rel8
@@ -37,7 +34,7 @@ updateTask schema table updateId updates =
         UpdateParent parent -> row {parent = lit $ Just parent}
         UpdateRemindAt remindAt -> row {remindAt = lit $ Just remindAt}
         UpdateRepeatAfter repeatAfter -> row {repeatAfter = lit $ Just repeatAfter}
-        UpdateTags tags -> row {tags = lit $ Just . fold1 . NonEmpty.intersperse $$(NonEmptyText.make ",") $ tags}
+        UpdateTags tags -> row {tags = lit $ Just . fold1 . NonEmpty.intersperse (NonEmptyText ',' "") $ tags}
    in Update
         { target = taskSchema schema table,
           from = pure (),

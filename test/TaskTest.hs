@@ -1,10 +1,8 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module TaskTest where
 
 import Data.Time (utc)
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
-import NonEmptyText qualified
+import NonEmptyText (NonEmptyText (..))
 import Relude
 import Repeat qualified
 import Setup qualified
@@ -20,7 +18,7 @@ test_display =
     . Task.display utc Setup.defaultPalette
     $ Task.TaskWithSubTasks
       Task.Task
-        { description = $$(NonEmptyText.make "PARENT"),
+        { description = (NonEmptyText 'P' "ARENT"),
           due = Just $ posixSecondsToUTCTime 1779453522,
           id = 1,
           remindAt = Just $ posixSecondsToUTCTime 1779451111,
@@ -29,7 +27,7 @@ test_display =
             Identity
               $ Task.TaskWithSubTasks
                 Task.Task
-                  { description = $$(NonEmptyText.make "CHILD"),
+                  { description = (NonEmptyText 'C' "HILD"),
                     due = Just $ posixSecondsToUTCTime 1779453522,
                     id = 2,
                     remindAt = Just $ posixSecondsToUTCTime 1779451111,
@@ -38,17 +36,17 @@ test_display =
                       Identity
                         $ Task.TaskWithoutSubTasks
                           Task.Task
-                            { description = $$(NonEmptyText.make "GRANDCHILD"),
+                            { description = (NonEmptyText 'G' "RANDCHILD"),
                               due = Just $ posixSecondsToUTCTime 1779453522,
                               id = 3,
                               remindAt = Just $ posixSecondsToUTCTime 1779451111,
                               repeatAfter = Just Repeat.Daily,
                               subTasks = Proxy,
-                              tags = Just $ $$(NonEmptyText.make "grandchild") :| []
+                              tags = Just $ (NonEmptyText 'g' "randchild") :| []
                             }
                         :| [],
-                    tags = Just $ $$(NonEmptyText.make "child") :| []
+                    tags = Just $ (NonEmptyText 'c' "hild") :| []
                   }
               :| [],
-          tags = Just $ $$(NonEmptyText.make "parent") :| []
+          tags = Just $ (NonEmptyText 'p' "arent") :| []
         }

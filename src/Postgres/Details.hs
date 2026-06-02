@@ -1,10 +1,7 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module Postgres.Details where
 
 import Data.Aeson qualified as Aeson
-import NonEmptyText (NonEmptyText)
-import NonEmptyText qualified
+import NonEmptyText (NonEmptyText (..))
 import Relude
 
 newtype TableName = TableName NonEmptyText
@@ -23,9 +20,9 @@ data Details = Details
 defaultDetails :: Details
 defaultDetails =
   Details
-    { table = TableName $$(NonEmptyText.make "table name"),
-      schema = Schema $$(NonEmptyText.make "schema name"),
-      connString = $$(NonEmptyText.make "postgres connection string")
+    { table = TableName $ NonEmptyText 't' "able name",
+      schema = Schema $ NonEmptyText 's' "chema name",
+      connString = NonEmptyText 'p' "ostgres connection string"
     }
 
 options :: Aeson.Options

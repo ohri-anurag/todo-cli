@@ -1,9 +1,7 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module Postgres.TaskTest where
 
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
-import NonEmptyText qualified
+import NonEmptyText (NonEmptyText (..))
 import Postgres.Details (Schema (..), TableName (..))
 import Postgres.Task (completeTask, listNonCompletedTasks)
 import Postgres.Task.Insert (TaskOptions (..), insertTask)
@@ -20,17 +18,17 @@ test_insertTask =
     $ pure
     . encodeUtf8
     . showInsert
-    . insertTask (Schema $$(NonEmptyText.make "public")) (TableName $$(NonEmptyText.make "tasks"))
+    . insertTask (Schema (NonEmptyText 'p' "ublic")) (TableName (NonEmptyText 't' "asks"))
     $ TaskOptions
-      { description = Identity $$(NonEmptyText.make "This is a test"),
+      { description = Identity (NonEmptyText 'T' "his is a test"),
         due = Just $ posixSecondsToUTCTime 1779453522,
         parent = Just 2,
         remindAt = Just $ posixSecondsToUTCTime 1779451111,
         repeatAfter = Just Repeat.Daily,
         tags =
           Just
-            $ $$(NonEmptyText.make "simple")
-            :| [$$(NonEmptyText.make "test")]
+            $ (NonEmptyText 's' "imple")
+            :| [(NonEmptyText 't' "est")]
       }
 
 test_completeTask :: TestTree
@@ -39,7 +37,7 @@ test_completeTask =
     $ pure
     . encodeUtf8
     . showUpdate
-    $ completeTask (Schema $$(NonEmptyText.make "public")) (TableName $$(NonEmptyText.make "tasks")) 2
+    $ completeTask (Schema (NonEmptyText 'p' "ublic")) (TableName (NonEmptyText 't' "asks")) 2
 
 test_listNonCompletedTasks :: TestTree
 test_listNonCompletedTasks =
@@ -47,7 +45,7 @@ test_listNonCompletedTasks =
     $ pure
     . encodeUtf8
     . showQuery
-    $ listNonCompletedTasks (Schema $$(NonEmptyText.make "public")) (TableName $$(NonEmptyText.make "tasks"))
+    $ listNonCompletedTasks (Schema (NonEmptyText 'p' "ublic")) (TableName (NonEmptyText 't' "asks"))
 
 test_updateTask :: TestTree
 test_updateTask =
@@ -56,17 +54,17 @@ test_updateTask =
     . encodeUtf8
     . showUpdate
     $ updateTask
-      (Schema $$(NonEmptyText.make "public"))
-      (TableName $$(NonEmptyText.make "tasks"))
+      (Schema (NonEmptyText 'p' "ublic"))
+      (TableName (NonEmptyText 't' "asks"))
       2
-      ( UpdateDescription $$(NonEmptyText.make "Test")
+      ( UpdateDescription (NonEmptyText 'T' "est")
           :| [ UpdateDue (posixSecondsToUTCTime 1779453522),
                UpdateParent 2,
                UpdateRemindAt (posixSecondsToUTCTime 1779451111),
                UpdateRepeatAfter Repeat.Daily,
                UpdateTags
-                 ( $$(NonEmptyText.make "simple")
-                     :| [$$(NonEmptyText.make "test")]
+                 ( (NonEmptyText 's' "imple")
+                     :| [(NonEmptyText 't' "est")]
                  )
              ]
       )

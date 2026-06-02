@@ -1,12 +1,9 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module Postgres.Task.Insert where
 
 import Data.Foldable1 (fold1)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Time (UTCTime)
 import NonEmptyText (NonEmptyText (..))
-import NonEmptyText qualified
 import Postgres.Details (Schema (..), TableName (..))
 import Postgres.Task (Task (..), taskSchema)
 import Rel8
@@ -56,5 +53,5 @@ insertTask schema table TaskOptions {..} =
           remindAt = lit remindAt,
           repeatAfter = lit repeatAfter,
           parent = lit parent,
-          tags = lit $ (fold1 . NonEmpty.intersperse $$(NonEmptyText.make ",")) <$> tags
+          tags = lit $ (fold1 . NonEmpty.intersperse (NonEmptyText ',' "")) <$> tags
         }

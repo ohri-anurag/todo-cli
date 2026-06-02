@@ -1,6 +1,5 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE TemplateHaskell #-}
 
 module Postgres.Task where
 
@@ -8,8 +7,8 @@ import Data.Map qualified as Map
 import Data.Text qualified as Text
 import Data.Time (UTCTime)
 import NonEmptyText (NonEmptyText (..))
+import NonEmptyText qualified
 import Postgres.Details (Schema (..), TableName (..))
-import Refined (refineFail)
 import Rel8
   ( Column,
     Expr,
@@ -80,7 +79,7 @@ unpack childMap Task {..} =
                 subTasks = Proxy,
                 tags = do
                   listNeTags <-
-                    mapMaybe (fmap NonEmptyText . refineFail)
+                    mapMaybe (rightToMaybe . NonEmptyText.parse)
                       . Text.splitOn ","
                       . toText
                       <$> tags
@@ -97,7 +96,7 @@ unpack childMap Task {..} =
                 subTasks = Identity $ fmap (unpack childMap) children,
                 tags = do
                   listNeTags <-
-                    mapMaybe (fmap NonEmptyText . refineFail)
+                    mapMaybe (rightToMaybe . NonEmptyText.parse)
                       . Text.splitOn ","
                       . toText
                       <$> tags

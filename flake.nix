@@ -14,7 +14,7 @@
       devShells.${system}.default = pkgs.mkShell {
         buildInputs = with pkgs; [
           haskellPackages.cabal-install
-          haskell.compiler.ghc912
+          haskell.compiler.ghc9124
           haskellPackages.cabal-fmt
           haskellPackages.hoogle
           pkg-config
@@ -28,7 +28,7 @@
         tag = "latest";
         contents = with pkgs; [
           haskellPackages.cabal-install
-          haskell.compiler.ghc912
+          haskell.compiler.ghc9124
           bash # Needed by docker to run commands inside an image
           coreutils # mkdir
           wget # Needed by cabal to fetch updates

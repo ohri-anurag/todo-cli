@@ -24,7 +24,7 @@ jobs:
       - name: Run CI using docker
         run: |
           docker pull ghcr.io/ohri-anurag/ci:latest
-          docker run -v ./:/ci ghcr.io/ohri-anurag/ci:latest bash -c 'cabal build --builddir=/build-cache && cabal test --builddir=/build-cache'
+          docker run -v ./:/ci ghcr.io/ohri-anurag/ci:latest bash -c 'cd /root/.cache/cabal/packages/hackage.haskell.org && gzip -d 01-index.tar.gz && cd /ci && cabal build --builddir=/build-cache && cabal test --builddir=/build-cache'
       - name: Get the current version
         if: startsWith(github.ref, 'refs/tags/v')
         run: |

@@ -12,6 +12,7 @@ import Data.Text qualified as Text
 import Data.Text.IO qualified as TIO
 import Data.Time (ZonedTime, getCurrentTimeZone, zonedTimeToUTC)
 import Data.Time.Format.ISO8601 qualified as ISO8601
+import Data.Version (showVersion)
 import Hasql.Connection qualified
 import Hasql.Connection.Setting qualified
 import Hasql.Connection.Setting.Connection qualified
@@ -46,6 +47,7 @@ import Options.Applicative
     str,
     strOption,
   )
+import Paths_todo_cli qualified as Paths
 import Postgres.Details qualified as Postgres
 import Postgres.Task qualified as Postgres
 import Postgres.Task.Insert qualified as Postgres.Insert
@@ -303,4 +305,4 @@ main = do
             $ Postgres.Update.updateTask schema table index neUpdates
       bitraverse_ displayError (const $ TIO.putStrLn $ Color.green "Task updated successfully!") eitherError
     Version ->
-      putStrLn $ "todo v0.1.2.1"
+      putStrLn $ showVersion Paths.version

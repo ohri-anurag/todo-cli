@@ -10,6 +10,7 @@ data NonEmptyText = NonEmptyText
   { firstChar :: Char,
     textValue :: Text
   }
+  deriving stock (Eq)
 
 parse :: Text -> Either String NonEmptyText
 parse t = case Text.uncons t of

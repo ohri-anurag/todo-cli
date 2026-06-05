@@ -3,6 +3,9 @@ module Postgres.Task.Insert where
 import Data.Foldable1 (fold1)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Time (UTCTime)
+import Hasql.Session qualified
+import Hasql.Transaction qualified
+import Hasql.Transaction.Sessions qualified
 import NonEmptyText (NonEmptyText (..))
 import Postgres.Details (Schema (..), TableName (..))
 import Postgres.Task (Task (..), taskSchema)
@@ -11,7 +14,9 @@ import Rel8
     Insert (..),
     OnConflict (DoNothing),
     Returning (NoReturning),
+    insert,
     lit,
+    run_,
     unsafeDefault,
     values,
   )
@@ -55,3 +60,11 @@ insertTask schema table TaskOptions {..} =
           parent = lit parent,
           tags = lit $ (fold1 . NonEmpty.intersperse (NonEmptyText ',' "")) <$> tags
         }
+
+addTask :: Schema -> TableName -> AddTaskOptions -> Hasql.Session.Session ()
+addTask schema table taskOptions =
+  Hasql.Transaction.Sessions.transaction Hasql.Transaction.Sessions.Serializable Hasql.Transaction.Sessions.Write
+    $ Hasql.Transaction.statement ()
+    $ run_
+    $ insert
+    $ insertTask schema table taskOptions

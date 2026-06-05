@@ -4,15 +4,8 @@ import Data.Aeson ((.:), (.=))
 import Data.Aeson qualified as Aeson
 import Data.Colour (Colour)
 import Data.Colour.SRGB (sRGB24read, sRGB24show)
-import NonEmptyText (NonEmptyText)
 import Postgres.Details qualified as Postgres
 import Relude hiding (id, one, repeat)
-
-newtype TableName = TableName NonEmptyText
-  deriving newtype (Show, Aeson.ToJSON, Aeson.FromJSON)
-
-newtype Schema = Schema NonEmptyText
-  deriving newtype (Show, Aeson.ToJSON, Aeson.FromJSON)
 
 data Palette = Palette
   { id :: Colour Float,

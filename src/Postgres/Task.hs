@@ -6,6 +6,9 @@ module Postgres.Task where
 import Data.Map qualified as Map
 import Data.Text qualified as Text
 import Data.Time (UTCTime)
+import Hasql.Session qualified
+import Hasql.Transaction qualified
+import Hasql.Transaction.Sessions qualified
 import NonEmptyText (NonEmptyText (..))
 import NonEmptyText qualified
 import Postgres.Details (Schema (..), TableName (..))
@@ -17,18 +20,14 @@ import Rel8
     Query,
     Rel8able,
     Result,
-    Returning (NoReturning),
     TableSchema (..),
-    Update (..),
     each,
     filter,
-    lit,
     not_,
-    (==.),
-    (||.),
+    run,
+    select,
   )
-import Rel8.Expr.Time (now)
-import Relude hiding (filter, id)
+import Relude hiding (filter, id, repeat)
 import Relude qualified as Relude (filter)
 import Repeat (Repeat (..))
 import Task qualified
@@ -50,6 +49,11 @@ data Task f = Task
 
 deriving instance Show (Task Result)
 
+-- | NOTE: This function assumes that there will always be
+-- root level task in the provided list of tasks.
+--
+-- It is fine to use when fetching all tasks from the DB.
+-- Use with caution otherwise.
 unpackAll :: [Task Result] -> [Task.Task]
 unpackAll postgresTasks =
   let idMap = Map.fromList $ postgresTasks <&> \(task@Task {id}) -> (id, task)
@@ -105,17 +109,15 @@ taskSchema (Schema schema) (TableName table) =
           }
     }
 
-completeTask :: Schema -> TableName -> Int64 -> Update ()
-completeTask schema table searchId =
-  Update
-    { target = taskSchema schema table,
-      from = pure (),
-      set = \_from row -> row {isCompleted = lit True, updatedAt = now},
-      updateWhere = \_from Task {id, parent} -> id ==. lit searchId ||. parent ==. lit (Just searchId),
-      returning = NoReturning
-    }
-
 listNonCompletedTasks :: Schema -> TableName -> Query (Task Expr)
 listNonCompletedTasks schema table = do
   task <- each $ taskSchema schema table
   filter (\(Task {isCompleted}) -> not_ $ isCompleted) task
+
+listTasks :: Schema -> TableName -> Hasql.Session.Session [Task Result]
+listTasks schema table =
+  Hasql.Transaction.Sessions.transaction Hasql.Transaction.Sessions.Serializable Hasql.Transaction.Sessions.Write
+    $ Hasql.Transaction.statement ()
+    $ run
+    $ select
+    $ listNonCompletedTasks schema table

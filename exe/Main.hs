@@ -17,8 +17,6 @@ import Hasql.Connection qualified
 import Hasql.Connection.Setting qualified
 import Hasql.Connection.Setting.Connection qualified
 import Hasql.Session qualified
-import Hasql.Transaction qualified
-import Hasql.Transaction.Sessions qualified
 import NonEmptyText (NonEmptyText (..))
 import NonEmptyText qualified as NonEmptyText
 import Options.Applicative
@@ -50,10 +48,10 @@ import Options.Applicative
 import Paths_todo_cli qualified as Paths
 import Postgres.Details qualified as Postgres
 import Postgres.Task qualified as Postgres
+import Postgres.Task.Complete qualified as Postgres.Complete
 import Postgres.Task.Insert qualified as Postgres.Insert
 import Postgres.Task.Update qualified as Postgres.Update
-import Rel8 qualified
-import Relude
+import Relude hiding (id)
 import Repeat qualified
 import Setup qualified
 import System.Directory (XdgDirectory (..), createDirectoryIfMissing, getXdgDirectory)
@@ -213,13 +211,9 @@ main = do
         $ withPostgresConnection
         $ \conn schema table _ ->
           withExceptT PostgresSesssionError
-            . ExceptT
-            . flip Hasql.Session.run conn
-            . Hasql.Transaction.Sessions.transaction Hasql.Transaction.Sessions.Serializable Hasql.Transaction.Sessions.Write
-            . Hasql.Transaction.statement ()
-            . Rel8.run_
-            . Rel8.insert
-            $ Postgres.Insert.insertTask schema table taskOptions
+            $ ExceptT
+            $ flip Hasql.Session.run conn
+            $ Postgres.Insert.addTask schema table taskOptions
 
       bitraverse_ displayError (const $ TIO.putStrLn $ Color.green "Task added successfully!") eitherError
     CompleteTask index -> do
@@ -229,11 +223,7 @@ main = do
           withExceptT PostgresSesssionError
             $ ExceptT
             $ flip Hasql.Session.run conn
-            . Hasql.Transaction.Sessions.transaction Hasql.Transaction.Sessions.Serializable Hasql.Transaction.Sessions.Write
-            $ Hasql.Transaction.statement ()
-            . Rel8.run_
-            . Rel8.update
-            $ Postgres.completeTask schema table index
+            $ Postgres.Complete.completeTask schema table index
       bitraverse_ displayError (const $ TIO.putStrLn $ Color.green "Task completed successfully!") eitherError
     Init method ->
       case method of
@@ -267,11 +257,7 @@ main = do
               $ withExceptT PostgresSesssionError
               $ ExceptT
               $ flip Hasql.Session.run conn
-              . Hasql.Transaction.Sessions.transaction Hasql.Transaction.Sessions.Serializable Hasql.Transaction.Sessions.Write
-              $ Hasql.Transaction.statement ()
-              . Rel8.run
-              . Rel8.select
-              $ Postgres.listNonCompletedTasks schema table
+              $ Postgres.listTasks schema table
           traverse_ (putStrLn . toString . Task.display tz palette) tasks
       bitraverse_ displayError (const $ pure ()) eitherError
     Setup method ->
@@ -298,10 +284,6 @@ main = do
           withExceptT PostgresSesssionError
             $ ExceptT
             $ flip Hasql.Session.run conn
-            . Hasql.Transaction.Sessions.transaction Hasql.Transaction.Sessions.Serializable Hasql.Transaction.Sessions.Write
-            $ Hasql.Transaction.statement ()
-            . Rel8.run_
-            . Rel8.update
             $ Postgres.Update.updateTask schema table index neUpdates
       bitraverse_ displayError (const $ TIO.putStrLn $ Color.green "Task updated successfully!") eitherError
     Version ->

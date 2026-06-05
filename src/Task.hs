@@ -18,7 +18,7 @@ data Task = Task
     subTasks :: Maybe (NonEmpty Task),
     tags :: Maybe (NonEmpty NonEmptyText)
   }
-  deriving stock (Show, Generic)
+  deriving stock (Eq, Show, Generic)
 
 formatUTCTime :: TimeZone -> Text -> UTCTime -> Text
 formatUTCTime tz prefix time =

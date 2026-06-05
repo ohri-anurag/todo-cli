@@ -66,42 +66,21 @@ unpackAll postgresTasks =
 
 unpack :: Map Int64 (NonEmpty (Task Result)) -> Task Result -> Task.Task
 unpack childMap Task {..} =
-  let childrenMaybe = Map.lookup id childMap
-   in case childrenMaybe of
-        Nothing ->
-          Task.TaskWithoutSubTasks
-            Task.Task
-              { description = description,
-                due = due,
-                id = id,
-                remindAt = remindAt,
-                repeatAfter = repeatAfter,
-                subTasks = Proxy,
-                tags = do
-                  listNeTags <-
-                    mapMaybe (rightToMaybe . NonEmptyText.parse)
-                      . Text.splitOn ","
-                      . toText
-                      <$> tags
-                  nonEmpty listNeTags
-              }
-        Just children ->
-          Task.TaskWithSubTasks
-            Task.Task
-              { description = description,
-                due = due,
-                id = id,
-                remindAt = remindAt,
-                repeatAfter = repeatAfter,
-                subTasks = Identity $ fmap (unpack childMap) children,
-                tags = do
-                  listNeTags <-
-                    mapMaybe (rightToMaybe . NonEmptyText.parse)
-                      . Text.splitOn ","
-                      . toText
-                      <$> tags
-                  nonEmpty listNeTags
-              }
+  Task.Task
+    { description = description,
+      due = due,
+      id = id,
+      remindAt = remindAt,
+      repeatAfter = repeatAfter,
+      subTasks = unpack childMap <<$>> Map.lookup id childMap,
+      tags = do
+        listNeTags <-
+          mapMaybe (rightToMaybe . NonEmptyText.parse)
+            . Text.splitOn ","
+            . toText
+            <$> tags
+        nonEmpty listNeTags
+    }
 
 taskSchema :: Schema -> TableName -> TableSchema (Task Name)
 taskSchema (Schema schema) (TableName table) =

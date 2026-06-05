@@ -4,18 +4,17 @@
 [1;38;2;250;163;6mRemind at: Friday, May 22, 2026 at 11:58[m
 [1;38;2;237;127;252mRepeats: daily[m
 [1;38;2;127;252;192mTags: #parent[m
-[1;38;2;163;127;252mSub-Tasks:
+[1;38;2;163;127;252mSub-Tasks:[m
   [1;38;2;0;170;0mID: 2[m
   [1;38;2;0;170;170mDescription: CHILD[m
   [1;38;2;170;170;0mDue: Friday, May 22, 2026 at 12:38[m
   [1;38;2;250;163;6mRemind at: Friday, May 22, 2026 at 11:58[m
   [1;38;2;237;127;252mRepeats: daily[m
   [1;38;2;127;252;192mTags: #child[m
-  [1;38;2;163;127;252mSub-Tasks:
+  [1;38;2;163;127;252mSub-Tasks:[m
     [1;38;2;0;170;0mID: 3[m
     [1;38;2;0;170;170mDescription: GRANDCHILD[m
     [1;38;2;170;170;0mDue: Friday, May 22, 2026 at 12:38[m
     [1;38;2;250;163;6mRemind at: Friday, May 22, 2026 at 11:58[m
     [1;38;2;237;127;252mRepeats: daily[m
     [1;38;2;127;252;192mTags: #grandchild[m
-[m[m

@@ -16,37 +16,34 @@ test_display =
     . pure
     . encodeUtf8
     . Task.display utc Setup.defaultPalette
-    $ Task.TaskWithSubTasks
-      Task.Task
-        { description = (NonEmptyText 'P' "ARENT"),
-          due = Just $ posixSecondsToUTCTime 1779453522,
-          id = 1,
-          remindAt = Just $ posixSecondsToUTCTime 1779451111,
-          repeatAfter = Just Repeat.Daily,
-          subTasks =
-            Identity
-              $ Task.TaskWithSubTasks
-                Task.Task
-                  { description = (NonEmptyText 'C' "HILD"),
-                    due = Just $ posixSecondsToUTCTime 1779453522,
-                    id = 2,
-                    remindAt = Just $ posixSecondsToUTCTime 1779451111,
-                    repeatAfter = Just Repeat.Daily,
-                    subTasks =
-                      Identity
-                        $ Task.TaskWithoutSubTasks
-                          Task.Task
-                            { description = (NonEmptyText 'G' "RANDCHILD"),
-                              due = Just $ posixSecondsToUTCTime 1779453522,
-                              id = 3,
-                              remindAt = Just $ posixSecondsToUTCTime 1779451111,
-                              repeatAfter = Just Repeat.Daily,
-                              subTasks = Proxy,
-                              tags = Just $ (NonEmptyText 'g' "randchild") :| []
-                            }
-                        :| [],
-                    tags = Just $ (NonEmptyText 'c' "hild") :| []
-                  }
-              :| [],
-          tags = Just $ (NonEmptyText 'p' "arent") :| []
-        }
+    $ Task.Task
+      { description = (NonEmptyText 'P' "ARENT"),
+        due = Just $ posixSecondsToUTCTime 1779453522,
+        id = 1,
+        remindAt = Just $ posixSecondsToUTCTime 1779451111,
+        repeatAfter = Just Repeat.Daily,
+        subTasks =
+          Just
+            $ Task.Task
+              { description = (NonEmptyText 'C' "HILD"),
+                due = Just $ posixSecondsToUTCTime 1779453522,
+                id = 2,
+                remindAt = Just $ posixSecondsToUTCTime 1779451111,
+                repeatAfter = Just Repeat.Daily,
+                subTasks =
+                  Just
+                    $ Task.Task
+                      { description = (NonEmptyText 'G' "RANDCHILD"),
+                        due = Just $ posixSecondsToUTCTime 1779453522,
+                        id = 3,
+                        remindAt = Just $ posixSecondsToUTCTime 1779451111,
+                        repeatAfter = Just Repeat.Daily,
+                        subTasks = Nothing,
+                        tags = Just $ (NonEmptyText 'g' "randchild") :| []
+                      }
+                    :| [],
+                tags = Just $ (NonEmptyText 'c' "hild") :| []
+              }
+            :| [],
+        tags = Just $ (NonEmptyText 'p' "arent") :| []
+      }

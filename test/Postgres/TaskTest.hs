@@ -3,9 +3,10 @@ module Postgres.TaskTest where
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 import NonEmptyText (NonEmptyText (..))
 import Postgres.Details (Schema (..), TableName (..))
-import Postgres.Task (completeTasks, listNonCompletedTasks)
-import Postgres.Task.Insert (TaskOptions (..), insertTask)
-import Postgres.Task.Update (Updates (..), updateTask)
+import Postgres.Task (listNonCompletedTasks)
+import Postgres.Task.Complete (completeTasks)
+import Postgres.Task.Insert (TaskOptions (..), insertTaskQuery)
+import Postgres.Task.Update (Updates (..), updateTaskQuery)
 import Rel8 (showInsert, showQuery, showUpdate)
 import Relude
 import Repeat qualified
@@ -18,7 +19,7 @@ test_insertTask =
     $ pure
     . encodeUtf8
     . showInsert
-    . insertTask (Schema (NonEmptyText 'p' "ublic")) (TableName (NonEmptyText 't' "asks"))
+    . insertTaskQuery (Schema (NonEmptyText 'p' "ublic")) (TableName (NonEmptyText 't' "asks"))
     $ TaskOptions
       { description = Identity (NonEmptyText 'T' "his is a test"),
         due = Just $ posixSecondsToUTCTime 1779453522,
@@ -37,7 +38,10 @@ test_completeTask =
     $ pure
     . encodeUtf8
     . showUpdate
-    $ completeTasks (Schema (NonEmptyText 'p' "ublic")) (TableName (NonEmptyText 't' "asks")) [2]
+    $ completeTasks
+      (Schema (NonEmptyText 'p' "ublic"))
+      (TableName (NonEmptyText 't' "asks"))
+      [2]
 
 test_listNonCompletedTasks :: TestTree
 test_listNonCompletedTasks =
@@ -53,7 +57,7 @@ test_updateTask =
     $ pure
     . encodeUtf8
     . showUpdate
-    $ updateTask
+    $ updateTaskQuery
       (Schema (NonEmptyText 'p' "ublic"))
       (TableName (NonEmptyText 't' "asks"))
       2

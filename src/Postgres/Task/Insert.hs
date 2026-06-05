@@ -37,8 +37,8 @@ type AddTaskOptions = TaskOptions Identity
 
 type UpdateTaskOptions = TaskOptions Maybe
 
-insertTask :: Schema -> TableName -> AddTaskOptions -> Insert ()
-insertTask schema table TaskOptions {..} =
+insertTaskQuery :: Schema -> TableName -> AddTaskOptions -> Insert ()
+insertTaskQuery schema table TaskOptions {..} =
   Insert
     { into = taskSchema schema table,
       rows = values [task'],
@@ -67,4 +67,4 @@ addTask schema table taskOptions =
     $ Hasql.Transaction.statement ()
     $ run_
     $ insert
-    $ insertTask schema table taskOptions
+    $ insertTaskQuery schema table taskOptions

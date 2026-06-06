@@ -62,14 +62,15 @@ common warnings
   -- Base language which the package is written in.
   default-language:   GHC2024
   build-depends:
-    , aeson              ^>=2.2.4.1
-    , base               ^>=4.21.1.0
-    , hasql              >=1.9.3.2   && <1.10
-    , hasql-transaction  ^>=1.2.1
-    , refined            ^>=0.8.2
-    , rel8               ^>=1.7.0.0
-    , relude             ^>=1.2.2.2
-    , time               ^>=1.14
+    , aeson               ^>=2.2.4.1
+    , base                ^>=4.21.1.0
+    , hasql               >=1.9.3.2   && <1.10
+    , hasql-transaction   ^>=1.2.1
+    , refined             ^>=0.8.2
+    , rel8                ^>=1.7.0.0
+    , relude              ^>=1.2.2.2
+    , string-interpolate  ^>=0.3.4.0
+    , time                ^>=1.14
 
 library
   import:          warnings
@@ -80,6 +81,7 @@ library
     Color
     NonEmptyText
     Postgres.Details
+    Postgres.Init
     Postgres.Task
     Postgres.Task.Complete
     Postgres.Task.Insert
@@ -113,7 +115,6 @@ executable todo
     , filepath              ^>=1.5.4.0
     , mtl                   ^>=2.3.1
     , optparse-applicative  ^>=0.19.0.0
-    , string-interpolate    ^>=0.3.4.0
     , todo-cli
 
   -- Directories containing source files.
@@ -134,6 +135,7 @@ test-suite spec
 
   build-tool-depends: tasty-discover:tasty-discover ^>=5.2
   build-depends:
+    , hasql               >=1.9.3.2 && <1.10
     , tasty               ^>=1.5.4
     , tasty-discover      ^>=5.2.0
     , tasty-golden        ^>=2.3.6

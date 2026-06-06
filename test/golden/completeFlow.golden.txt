@@ -1,0 +1,33 @@
+[1;38;2;0;170;0mID: 4[m
+[1;38;2;0;170;170mDescription: Grandparent[m
+[1;38;2;237;127;252mRepeats: daily[m
+[1;38;2;163;127;252mSub-Tasks:[m
+  [1;38;2;0;170;0mID: 5[m
+  [1;38;2;0;170;170mDescription: parent[m
+  [1;38;2;237;127;252mRepeats: weekly[m
+  [1;38;2;163;127;252mSub-Tasks:[m
+    [1;38;2;0;170;0mID: 6[m
+    [1;38;2;0;170;170mDescription: Grandparent[m
+    [1;38;2;237;127;252mRepeats: daily[m
+[1;38;2;0;170;0mID: 4[m
+[1;38;2;0;170;170mDescription: Grandparent[m
+[1;38;2;237;127;252mRepeats: daily[m
+[1;38;2;163;127;252mSub-Tasks:[m
+  [1;38;2;0;170;0mID: 7[m
+  [1;38;2;0;170;170mDescription: parent[m
+  [1;38;2;237;127;252mRepeats: weekly[m
+  [1;38;2;163;127;252mSub-Tasks:[m
+    [1;38;2;0;170;0mID: 8[m
+    [1;38;2;0;170;170mDescription: Grandparent[m
+    [1;38;2;237;127;252mRepeats: daily[m
+[1;38;2;0;170;0mID: 4[m
+[1;38;2;0;170;170mDescription: Grandparent[m
+[1;38;2;237;127;252mRepeats: daily[m
+[1;38;2;163;127;252mSub-Tasks:[m
+  [1;38;2;0;170;0mID: 7[m
+  [1;38;2;0;170;170mDescription: parent[m
+  [1;38;2;237;127;252mRepeats: weekly[m
+  [1;38;2;163;127;252mSub-Tasks:[m
+    [1;38;2;0;170;0mID: 9[m
+    [1;38;2;0;170;170mDescription: Grandparent[m
+    [1;38;2;237;127;252mRepeats: daily[m

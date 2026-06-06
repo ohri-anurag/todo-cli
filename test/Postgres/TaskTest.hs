@@ -87,7 +87,8 @@ test_completeFlow :: TestTree
 test_completeFlow = goldenVsString "completeFlow" "test/golden/completeFlow.golden.txt" $ do
   let schema = Schema (NonEmptyText 't' "est_schema")
       table = TableName (NonEmptyText 't' "asks")
-      connStr = "postgresql://localhost:5432/postgres" :: Text
+  envStr <- lookupEnv "PG_CONN_STRING"
+  let connStr = fromMaybe "postgresql://localhost:5432/postgres" $ toText <$> envStr
       connSetting = Hasql.Connection.Setting.connection $ Hasql.Connection.Setting.Connection.string connStr
 
   result <- runExceptT $ do

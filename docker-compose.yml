@@ -1,0 +1,28 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  ci:
+    image: ghcr.io/ohri-anurag/ci:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PG_CONN_STRING: postgresql://postgres@postgres:5432/postgres
+    volumes:
+      - ./:/ci
+    command: >
+      bash -c '
+        cd /root/.cache/cabal/packages/hackage.haskell.org &&
+        gzip -d 01-index.tar.gz 2>/dev/null || true &&
+        cd /ci &&
+        cabal build --builddir=/build-cache &&
+        cabal test --builddir=/build-cache
+      '

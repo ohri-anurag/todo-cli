@@ -23,6 +23,44 @@ import Task qualified
 import Test.Tasty (TestTree)
 import Test.Tasty.Golden (goldenVsString)
 
+runFlowTest :: Text -> (Schema -> TableName -> Hasql.Session.Session LByteString) -> IO LByteString
+runFlowTest schemaName body = do
+  let schema = Schema (NonEmptyText 't' schemaName)
+      table = TableName (NonEmptyText 't' "asks")
+  envStr <- lookupEnv "PG_CONN_STRING"
+  let connStr = fromMaybe "postgresql://localhost:5432/postgres" $ toText <$> envStr
+      connSetting = Hasql.Connection.Setting.connection $ Hasql.Connection.Setting.Connection.string connStr
+  result <- runExceptT $ do
+    conn <- ExceptT $ first show <$> Hasql.Connection.acquire [connSetting]
+    bytes <- ExceptT $ fmap (first show) $ flip Hasql.Session.run conn $ do
+      Postgres.Init.initTaskTable schema table
+      output <- body schema table
+      Hasql.Session.sql $ "drop schema if exists " <> encodeUtf8 schemaName <> " cascade"
+      pure output
+    lift $ Hasql.Connection.release conn
+    pure bytes
+  pure $ case result of
+    Left err -> "Test failed: " <> err
+    Right bytes -> bytes
+
+displayTasks :: Schema -> TableName -> Hasql.Session.Session LByteString
+displayTasks schema table = do
+  tasks <- listTasks schema table
+  tz <- liftIO getCurrentTimeZone
+  pure $ encodeUtf8 $ mconcat $ fmap (Task.display tz Setup.defaultPalette) $ unpackAll tasks
+
+insertTask :: Schema -> TableName -> NonEmptyText -> Maybe Int64 -> Maybe Repeat -> Hasql.Session.Session ()
+insertTask schema table desc parent repeatAfter =
+  Postgres.Insert.addTask schema table
+    $ Postgres.Insert.TaskOptions
+      { description = Identity desc,
+        due = Nothing,
+        parent = parent,
+        remindAt = Nothing,
+        repeatAfter = repeatAfter,
+        tags = Nothing
+      }
+
 test_insertTask :: TestTree
 test_insertTask =
   goldenVsString "insertTask" "test/golden/insertTask.golden.txt"
@@ -84,72 +122,53 @@ test_updateTask =
       )
 
 test_completeFlowRepeat :: TestTree
-test_completeFlowRepeat = goldenVsString "completeFlowRepeat" "test/golden/completeFlowRepeat.golden.txt" $ do
-  let schema = Schema (NonEmptyText 't' "est_schema")
-      table = TableName (NonEmptyText 't' "asks")
-  envStr <- lookupEnv "PG_CONN_STRING"
-  let connStr = fromMaybe "postgresql://localhost:5432/postgres" $ toText <$> envStr
-      connSetting = Hasql.Connection.Setting.connection $ Hasql.Connection.Setting.Connection.string connStr
+test_completeFlowRepeat = goldenVsString "completeFlowRepeat" "test/golden/completeFlowRepeat.golden.txt"
+  $ runFlowTest "test_schema"
+  $ \schema table -> do
+    insertTask schema table (NonEmptyText 'G' "randparent") Nothing (Just Daily)
+    insertTask schema table (NonEmptyText 'p' "arent") (Just 1) (Just Weekly)
+    insertTask schema table (NonEmptyText 'G' "randparent") (Just 2) (Just Daily)
 
-  result <- runExceptT $ do
-    conn <- ExceptT $ first show <$> Hasql.Connection.acquire [connSetting]
-    bytes <- ExceptT $ fmap (first show) $ flip Hasql.Session.run conn $ do
-      Postgres.Init.initTaskTable schema table
+    Postgres.Complete.completeTask schema table 1
+    d1 <- displayTasks schema table
 
-      Postgres.Insert.addTask schema table
-        $ Postgres.Insert.TaskOptions
-          { description = Identity (NonEmptyText 'G' "randparent"),
-            due = Nothing,
-            parent = Nothing,
-            remindAt = Nothing,
-            repeatAfter = Just Daily,
-            tags = Nothing
-          }
+    Postgres.Complete.completeTask schema table 5
+    d2 <- displayTasks schema table
 
-      Postgres.Insert.addTask schema table
-        $ Postgres.Insert.TaskOptions
-          { description = Identity (NonEmptyText 'p' "arent"),
-            due = Nothing,
-            parent = Just 1,
-            remindAt = Nothing,
-            repeatAfter = Just Weekly,
-            tags = Nothing
-          }
+    Postgres.Complete.completeTask schema table 8
+    d3 <- displayTasks schema table
 
-      Postgres.Insert.addTask schema table
-        $ Postgres.Insert.TaskOptions
-          { description = Identity (NonEmptyText 'G' "randparent"),
-            due = Nothing,
-            parent = Just 2,
-            remindAt = Nothing,
-            repeatAfter = Just Daily,
-            tags = Nothing
-          }
+    pure $ mconcat [d1, d2, d3]
 
-      let displayTasks = do
-            tasks <- listTasks schema table
-            tz <- liftIO getCurrentTimeZone
-            pure
-              $ encodeUtf8
-              $ mconcat
-              $ fmap (Task.display tz Setup.defaultPalette)
-              $ unpackAll tasks
+test_completeFlowNonRepeatGrandparent :: TestTree
+test_completeFlowNonRepeatGrandparent = goldenVsString "completeFlowNonRepeatGrandparent" "test/golden/completeFlowNonRepeatGrandparent.golden.txt"
+  $ runFlowTest "test_schema_nr_gp"
+  $ \schema table -> do
+    insertTask schema table (NonEmptyText 'G' "randparent") Nothing Nothing
+    insertTask schema table (NonEmptyText 'p' "arent") (Just 1) Nothing
+    insertTask schema table (NonEmptyText 'c' "hild") (Just 2) Nothing
 
-      Postgres.Complete.completeTask schema table 1
-      d1 <- displayTasks
+    Postgres.Complete.completeTask schema table 1
+    displayTasks schema table
 
-      Postgres.Complete.completeTask schema table 5
-      d2 <- displayTasks
+test_completeFlowNonRepeatParent :: TestTree
+test_completeFlowNonRepeatParent = goldenVsString "completeFlowNonRepeatParent" "test/golden/completeFlowNonRepeatParent.golden.txt"
+  $ runFlowTest "test_schema_nr_p"
+  $ \schema table -> do
+    insertTask schema table (NonEmptyText 'G' "randparent") Nothing Nothing
+    insertTask schema table (NonEmptyText 'p' "arent") (Just 1) Nothing
+    insertTask schema table (NonEmptyText 'c' "hild") (Just 2) Nothing
 
-      Postgres.Complete.completeTask schema table 8
-      d3 <- displayTasks
+    Postgres.Complete.completeTask schema table 2
+    displayTasks schema table
 
-      Hasql.Session.sql "drop schema if exists test_schema cascade"
-      pure $ mconcat [d1, d2, d3]
+test_completeFlowNonRepeatChild :: TestTree
+test_completeFlowNonRepeatChild = goldenVsString "completeFlowNonRepeatChild" "test/golden/completeFlowNonRepeatChild.golden.txt"
+  $ runFlowTest "test_schema_nr_c"
+  $ \schema table -> do
+    insertTask schema table (NonEmptyText 'G' "randparent") Nothing Nothing
+    insertTask schema table (NonEmptyText 'p' "arent") (Just 1) Nothing
+    insertTask schema table (NonEmptyText 'c' "hild") (Just 2) Nothing
 
-    lift $ Hasql.Connection.release conn
-    pure bytes
-
-  pure $ case result of
-    Left err -> "Test failed: " <> err
-    Right bytes -> bytes
+    Postgres.Complete.completeTask schema table 3
+    displayTasks schema table

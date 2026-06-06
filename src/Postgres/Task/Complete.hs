@@ -1,11 +1,8 @@
 module Postgres.Task.Complete where
 
-import Data.Foldable1 (fold1)
-import Data.List.NonEmpty qualified as NonEmpty
 import Hasql.Session qualified
 import Hasql.Transaction qualified
 import Hasql.Transaction.Sessions qualified
-import NonEmptyText (NonEmptyText (..))
 import Postgres.Details (Schema (..), TableName (..))
 import Postgres.Task (Task (..), taskSchema)
 import Rel8
@@ -36,8 +33,7 @@ import Rel8
   )
 import Rel8.Expr.Time (now)
 import Relude hiding (filter, id, repeat)
-import Repeat (Repeat (..), getRepeatedTime)
-import Task qualified
+import Repeat (Repeat, getRepeatedTime)
 
 completeTask :: Schema -> TableName -> Int64 -> Hasql.Session.Session ()
 completeTask schema table index =
@@ -52,16 +48,21 @@ completeTask schema table index =
       . run_
       . update
       $ completeTasks schema table oldIds
-    ids <-
+
+    let repeatMaybe = do
+          Task {repeatAfter} <- find (\Task {id} -> id == index) taskAndAllSubTasks
+          repeatAfter
+    for_ repeatMaybe $ \repeat -> do
+      ids <-
+        Hasql.Transaction.statement ()
+          . run
+          . insert
+          $ cloneTasks schema table repeat taskAndAllSubTasks
+      let idPairs = zip oldIds ids
       Hasql.Transaction.statement ()
-        . run
-        . insert
-        $ cloneTasks schema table index taskAndAllSubTasks
-    let idPairs = zip oldIds ids
-    Hasql.Transaction.statement ()
-      . run_
-      . update
-      $ updateTasks schema table idPairs
+        . run_
+        . update
+        $ updateTasks schema table idPairs
 
 fetchTaskAndSubtasksQuery :: Schema -> TableName -> Int64 -> Query (Task Expr)
 fetchTaskAndSubtasksQuery schema table parentId = loop base recursive
@@ -87,39 +88,8 @@ fetchTaskAndSubtasksQuery schema table parentId = loop base recursive
         )
         task
 
-getTaskAndAllSubTasks :: Maybe Repeat -> Maybe Task.Task -> Task.Task -> [Task Expr]
-getTaskAndAllSubTasks repeat parent (original@Task.Task {..}) =
-  task : foldMap (getTaskAndAllSubTasks repeat (Just original)) (maybe [] toList subTasks)
-  where
-    task =
-      Task
-        { createdAt = now,
-          updatedAt = now,
-          id = unsafeDefault,
-          isCompleted = lit False,
-          description = lit description,
-          due = lit $ getRepeatedTime <$> repeat <*> due,
-          remindAt = lit $ getRepeatedTime <$> repeat <*> remindAt,
-          repeatAfter = lit repeatAfter,
-          parent = lit $ Task.id <$> parent,
-          tags = lit $ (fold1 . NonEmpty.intersperse (NonEmptyText ',' "")) <$> tags
-        }
-
-cloneTask :: Schema -> TableName -> Task.Task -> Insert (Query (Expr Int64))
-cloneTask schema table task =
-  Insert
-    { into = taskSchema schema table,
-      rows = values tasks,
-      onConflict = DoNothing,
-      returning = Returning id
-    }
-  where
-    tasks = getTaskAndAllSubTasks repeatAfter Nothing task
-
-    Task.Task {repeatAfter} = task
-
-cloneTasks :: Schema -> TableName -> Int64 -> [Task Result] -> Insert (Query (Expr Int64))
-cloneTasks schema table indexToComplete tasks =
+cloneTasks :: Schema -> TableName -> Repeat -> [Task Result] -> Insert (Query (Expr Int64))
+cloneTasks schema table repeat tasks =
   Insert
     { into = taskSchema schema table,
       rows = values $ task' <$> tasks,
@@ -127,10 +97,6 @@ cloneTasks schema table indexToComplete tasks =
       returning = Returning id
     }
   where
-    repeat = do
-      Task {repeatAfter} <- find (\Task {id} -> id == indexToComplete) tasks
-      repeatAfter
-
     task' Task {..} =
       Task
         { createdAt = now,
@@ -138,8 +104,8 @@ cloneTasks schema table indexToComplete tasks =
           id = unsafeDefault,
           isCompleted = lit False,
           description = lit description,
-          due = lit $ getRepeatedTime <$> repeat <*> due,
-          remindAt = lit $ getRepeatedTime <$> repeat <*> remindAt,
+          due = lit $ getRepeatedTime repeat <$> due,
+          remindAt = lit $ getRepeatedTime repeat <$> remindAt,
           repeatAfter = lit repeatAfter,
           parent = lit parent,
           tags = lit tags

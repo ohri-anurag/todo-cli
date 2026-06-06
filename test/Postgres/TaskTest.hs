@@ -83,8 +83,8 @@ test_updateTask =
              ]
       )
 
-test_completeFlow :: TestTree
-test_completeFlow = goldenVsString "completeFlow" "test/golden/completeFlow.golden.txt" $ do
+test_completeFlowRepeat :: TestTree
+test_completeFlowRepeat = goldenVsString "completeFlowRepeat" "test/golden/completeFlowRepeat.golden.txt" $ do
   let schema = Schema (NonEmptyText 't' "est_schema")
       table = TableName (NonEmptyText 't' "asks")
   envStr <- lookupEnv "PG_CONN_STRING"

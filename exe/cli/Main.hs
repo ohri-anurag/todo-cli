@@ -4,6 +4,7 @@
 module Main (main) where
 
 import Color qualified
+import Command (Command (..), SetupMethod (..))
 import Control.Monad.Except (withExceptT)
 import Data.Aeson qualified as Aeson
 import Data.Text qualified as Text
@@ -48,7 +49,12 @@ import Postgres.Details qualified as Postgres
 import Postgres.Init qualified as Postgres.Init
 import Postgres.Task qualified as Postgres
 import Postgres.Task.Complete qualified as Postgres.Complete
-import Postgres.Task.Insert qualified as Postgres.Insert
+import Postgres.Task.Insert
+  ( AddTaskOptions (..),
+    Options (..),
+    UpdateTaskOptions (..),
+    addTask,
+  )
 import Postgres.Task.Update qualified as Postgres.Update
 import Relude hiding (id)
 import Repeat qualified
@@ -56,17 +62,6 @@ import Setup qualified
 import System.Directory (XdgDirectory (..), createDirectoryIfMissing, getXdgDirectory)
 import System.FilePath ((</>))
 import Task qualified
-
-data Command
-  = AddTask Postgres.Insert.AddTaskOptions
-  | CompleteTask Int64
-  | Init SetupMethod
-  | List
-  | Setup SetupMethod
-  | UpdateTask Int64 Postgres.Insert.UpdateTaskOptions
-  | Version
-
-data SetupMethod = Postgres
 
 nonEmptyTextReader :: ReadM NonEmptyText
 nonEmptyTextReader = eitherReader (NonEmptyText.parse . toText)
@@ -112,7 +107,7 @@ descriptionParser =
   argument nonEmptyTextReader
     $ mconcat [metavar "DESC", help "A text based description of the task"]
 
-taskOptionsParser :: Parser Postgres.Insert.Options
+taskOptionsParser :: Parser Options
 taskOptionsParser = do
   due <- optional $ option zonedTimeReader $ mconcat [short 'd', long "due", help "Due date in ISO8601 format (yyyy-MM-ddThh:mm:ss+hh:mm)."]
   parent <- optional $ option auto $ mconcat [short 'p', long "parent", help "The ID of this task's parent"]
@@ -138,7 +133,7 @@ taskOptionsParser = do
         ]
   tags <- optional $ fmap (Text.splitOn ",") $ strOption $ mconcat [short 't', long "tags", help "Comma separated list of tags"]
   pure
-    Postgres.Insert.Options
+    Options
       { due = zonedTimeToUTC <$> due,
         parent = parent,
         remindAt = zonedTimeToUTC <$> remindAt,
@@ -146,11 +141,11 @@ taskOptionsParser = do
         tags = nonEmpty $ mapMaybe (either (const Nothing) Just . NonEmptyText.parse) $ fold tags
       }
 
-addTaskOptionsParser :: Parser Postgres.Insert.AddTaskOptions
-addTaskOptionsParser = Postgres.Insert.AddTaskOptions <$> taskOptionsParser <*> descriptionParser
+addTaskOptionsParser :: Parser AddTaskOptions
+addTaskOptionsParser = AddTaskOptions <$> taskOptionsParser <*> descriptionParser
 
-updateTaskOptionsParser :: Parser Postgres.Insert.UpdateTaskOptions
-updateTaskOptionsParser = Postgres.Insert.UpdateTaskOptions <$> taskOptionsParser <*> optional descriptionParser
+updateTaskOptionsParser :: Parser UpdateTaskOptions
+updateTaskOptionsParser = UpdateTaskOptions <$> taskOptionsParser <*> optional descriptionParser
 
 idParser :: String -> Parser Int64
 idParser message =
@@ -212,7 +207,7 @@ main = do
           withExceptT PostgresSesssionError
             $ ExceptT
             $ flip Hasql.Session.run conn
-            $ Postgres.Insert.addTask schema table taskOptions
+            $ addTask schema table taskOptions
 
       bitraverse_ displayError (const $ TIO.putStrLn $ Color.green "Task added successfully!") eitherError
     CompleteTask index -> do
@@ -254,7 +249,7 @@ main = do
           writeFileLBS (path </> "todo.config")
             $ Aeson.encode
             $ Setup.defaultDetails
-    UpdateTask index (Postgres.Insert.UpdateTaskOptions Postgres.Insert.Options {..} description) -> do
+    UpdateTask index (UpdateTaskOptions Options {..} description) -> do
       let updates =
             catMaybes
               [ Postgres.Update.UpdateDescription <$> description,

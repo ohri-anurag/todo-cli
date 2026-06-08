@@ -19,6 +19,7 @@
           haskellPackages.hoogle
           pkg-config
           libpq.pg_config
+          zlib
           postgresql
           ormolu
         ];

@@ -14,7 +14,7 @@ WORKDIR /code
 RUN apt update && apt install -y pkg-config libpq-dev
 RUN cabal update \
    && cabal --builddir=/build-cache build --dependencies-only --disable-documentation --disable-library-profiling --disable-benchmarks --disable-tests \
-   && cabal --builddir=/build-cache test \
+   && cabal --builddir=/build-cache build spec \
    && cabal clean && rm -rf /root/.cache/cabal/packages/hackage.haskell.org/01-index.tar /root/.cache/cabal/logs
 
 RUN mkdir /ci

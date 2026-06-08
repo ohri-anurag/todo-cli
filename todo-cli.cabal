@@ -79,6 +79,7 @@ library
   -- cabal-fmt: expand src/
   exposed-modules:
     Color
+    Command
     NonEmptyText
     Postgres.Details
     Postgres.Init
@@ -101,7 +102,7 @@ executable todo
   import:         warnings
 
   -- .hs or .lhs file containing the Main module.
-  main-is:        Main.hs
+  main-is:        cli/Main.hs
 
   -- Modules included in this executable, other than Main.
   other-modules:  Paths_todo_cli
@@ -120,6 +121,31 @@ executable todo
   -- Directories containing source files.
   hs-source-dirs: exe
 
+executable server
+  -- Import common warning flags.
+  import:         warnings
+
+  -- .hs or .lhs file containing the Main module.
+  main-is:        server/Main.hs
+
+  -- Modules included in this executable, other than Main.
+  other-modules:  Paths_todo_cli
+
+  -- LANGUAGE extensions used by modules in this package.
+  -- other-extensions:
+
+  -- Other library packages from which modules are imported.
+  build-depends:
+    , directory             ^>=1.3.9.0
+    , filepath              ^>=1.5.4.0
+    , hal                   ^>=1.1
+    , mtl                   ^>=2.3.1
+    , optparse-applicative  ^>=0.19.0.0
+    , todo-cli
+
+  -- Directories containing source files.
+  hs-source-dirs: exe
+
 test-suite spec
   import:             warnings
   type:               exitcode-stdio-1.0
@@ -129,6 +155,7 @@ test-suite spec
 
   -- cabal-fmt: expand test/ -Main
   other-modules:
+    CommandTest
     Postgres.Task.InsertTest
     Postgres.TaskTest
     RepeatTest

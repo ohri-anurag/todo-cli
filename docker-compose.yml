@@ -23,6 +23,13 @@ services:
         cd /root/.cache/cabal/packages/hackage.haskell.org &&
         gzip -d 01-index.tar.gz 2>/dev/null || true &&
         cd /ci &&
-        cabal build --builddir=/build-cache &&
+        cabal build --builddir=/build-cache --enable-executable-static \
+          --ghc-option='-optl=-lpgport' \
+          --ghc-option='-optl=-lpgport_shlib' \
+          --ghc-option='-optl=-lpgcommon' \
+          --ghc-option='-optl=-lpgcommon_shlib' \
+          --ghc-option='-optl=-lpq' \
+          --ghc-option='-optl=-lcrypto' \
+          --ghc-option='-optl=-lssl' &&
         cabal test --builddir=/build-cache
       '

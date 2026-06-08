@@ -1,5 +1,8 @@
+{-# LANGUAGE DeriveAnyClass #-}
+
 module Postgres.Task.Insert where
 
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Foldable1 (fold1)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Time (UTCTime)
@@ -24,21 +27,26 @@ import Rel8.Expr.Time (now)
 import Relude
 import Repeat (Repeat (..))
 
-data TaskOptions f = TaskOptions
-  { description :: f NonEmptyText,
-    due :: Maybe UTCTime,
+data Options = Options
+  { due :: Maybe UTCTime,
     parent :: Maybe Int64,
     remindAt :: Maybe UTCTime,
     repeatAfter :: Maybe Repeat,
     tags :: Maybe (NonEmpty NonEmptyText)
   }
+  deriving stock (Generic)
+  deriving anyclass (FromJSON, ToJSON)
 
-type AddTaskOptions = TaskOptions Identity
+data AddTaskOptions = AddTaskOptions Options NonEmptyText
+  deriving stock (Generic)
+  deriving anyclass (FromJSON, ToJSON)
 
-type UpdateTaskOptions = TaskOptions Maybe
+data UpdateTaskOptions = UpdateTaskOptions Options (Maybe NonEmptyText)
+  deriving stock (Generic)
+  deriving anyclass (FromJSON, ToJSON)
 
 insertTaskQuery :: Schema -> TableName -> AddTaskOptions -> Insert ()
-insertTaskQuery schema table TaskOptions {..} =
+insertTaskQuery schema table (AddTaskOptions Options {..} description) =
   Insert
     { into = taskSchema schema table,
       rows = values [task'],
@@ -53,7 +61,7 @@ insertTaskQuery schema table TaskOptions {..} =
           updatedAt = now,
           id = unsafeDefault,
           isCompleted = lit False,
-          description = lit $ runIdentity description,
+          description = lit description,
           due = lit due,
           remindAt = lit remindAt,
           repeatAfter = lit repeatAfter,

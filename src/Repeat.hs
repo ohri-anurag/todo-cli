@@ -1,5 +1,6 @@
 module Repeat where
 
+import Data.Aeson (FromJSON (..), ToJSON (..), Value (String), withText)
 import Data.Text qualified as Text
 import Data.Time (DayOfWeek (..), UTCTime (..))
 import Data.Time.Calendar
@@ -144,6 +145,16 @@ parse = \case
                 _ -> Nothing
               Just $ Custom times' repeatTime
             _ -> Nothing
+
+instance ToJSON Repeat where
+  toJSON = String . toText . show
+
+instance FromJSON Repeat where
+  parseJSON =
+    withText "Repeat"
+      $ maybe (fail "Could not parse repeat!") pure
+      . parse
+      . toString
 
 instance Rel8.DBType Repeat where
   typeInformation =

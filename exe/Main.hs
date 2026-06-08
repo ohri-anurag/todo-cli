@@ -107,12 +107,13 @@ commandParser =
       )
     <**> helper
 
-taskOptionsParser :: (forall a. Parser a -> Parser (f a)) -> Parser (Postgres.Insert.TaskOptions f)
-taskOptionsParser toF = do
-  description <-
-    toF
-      $ argument nonEmptyTextReader
-      $ mconcat [metavar "DESC", help "A text based description of the task"]
+descriptionParser :: Parser NonEmptyText
+descriptionParser =
+  argument nonEmptyTextReader
+    $ mconcat [metavar "DESC", help "A text based description of the task"]
+
+taskOptionsParser :: Parser Postgres.Insert.Options
+taskOptionsParser = do
   due <- optional $ option zonedTimeReader $ mconcat [short 'd', long "due", help "Due date in ISO8601 format (yyyy-MM-ddThh:mm:ss+hh:mm)."]
   parent <- optional $ option auto $ mconcat [short 'p', long "parent", help "The ID of this task's parent"]
   remindAt <- optional $ option zonedTimeReader $ mconcat [long "remind-at", help "When to receive a reminder for this task in ISO8601 format (yyyy-MM-ddThh:mm:ss+hh:mm)."]
@@ -137,9 +138,8 @@ taskOptionsParser toF = do
         ]
   tags <- optional $ fmap (Text.splitOn ",") $ strOption $ mconcat [short 't', long "tags", help "Comma separated list of tags"]
   pure
-    Postgres.Insert.TaskOptions
-      { description = description,
-        due = zonedTimeToUTC <$> due,
+    Postgres.Insert.Options
+      { due = zonedTimeToUTC <$> due,
         parent = parent,
         remindAt = zonedTimeToUTC <$> remindAt,
         repeatAfter = repeatAfter,
@@ -147,10 +147,10 @@ taskOptionsParser toF = do
       }
 
 addTaskOptionsParser :: Parser Postgres.Insert.AddTaskOptions
-addTaskOptionsParser = taskOptionsParser (fmap Identity)
+addTaskOptionsParser = Postgres.Insert.AddTaskOptions <$> taskOptionsParser <*> descriptionParser
 
 updateTaskOptionsParser :: Parser Postgres.Insert.UpdateTaskOptions
-updateTaskOptionsParser = taskOptionsParser optional
+updateTaskOptionsParser = Postgres.Insert.UpdateTaskOptions <$> taskOptionsParser <*> optional descriptionParser
 
 idParser :: String -> Parser Int64
 idParser message =
@@ -254,7 +254,7 @@ main = do
           writeFileLBS (path </> "todo.config")
             $ Aeson.encode
             $ Setup.defaultDetails
-    UpdateTask index Postgres.Insert.TaskOptions {..} -> do
+    UpdateTask index (Postgres.Insert.UpdateTaskOptions Postgres.Insert.Options {..} description) -> do
       let updates =
             catMaybes
               [ Postgres.Update.UpdateDescription <$> description,

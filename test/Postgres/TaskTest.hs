@@ -12,10 +12,9 @@ import Postgres.Init qualified as Postgres.Init
 import Postgres.Task (listNonCompletedTasks, listTasks, unpackAll)
 import Postgres.Task.Complete (completeTasks)
 import Postgres.Task.Complete qualified as Postgres.Complete
-import Postgres.Task.Insert (TaskOptions (..), insertTaskQuery)
 import Postgres.Task.Insert qualified as Postgres.Insert
 import Postgres.Task.Update (Updates (..), updateTaskQuery)
-import Rel8 (showInsert, showQuery, showUpdate)
+import Rel8 (showQuery, showUpdate)
 import Relude
 import Repeat (Repeat (..))
 import Setup qualified
@@ -48,37 +47,6 @@ displayTasks schema table = do
   tasks <- listTasks schema table
   tz <- liftIO getCurrentTimeZone
   pure $ encodeUtf8 $ mconcat $ fmap (Task.display tz Setup.defaultPalette) $ unpackAll tasks
-
-insertTask :: Schema -> TableName -> NonEmptyText -> Maybe Int64 -> Maybe Repeat -> Hasql.Session.Session ()
-insertTask schema table desc parent repeatAfter =
-  Postgres.Insert.addTask schema table
-    $ Postgres.Insert.TaskOptions
-      { description = Identity desc,
-        due = Nothing,
-        parent = parent,
-        remindAt = Nothing,
-        repeatAfter = repeatAfter,
-        tags = Nothing
-      }
-
-test_insertTask :: TestTree
-test_insertTask =
-  goldenVsString "insertTask" "test/golden/insertTask.golden.txt"
-    $ pure
-    . encodeUtf8
-    . showInsert
-    . insertTaskQuery (Schema (NonEmptyText 'p' "ublic")) (TableName (NonEmptyText 't' "asks"))
-    $ TaskOptions
-      { description = Identity (NonEmptyText 'T' "his is a test"),
-        due = Just $ posixSecondsToUTCTime 1779453522,
-        parent = Just 2,
-        remindAt = Just $ posixSecondsToUTCTime 1779451111,
-        repeatAfter = Just Repeat.Daily,
-        tags =
-          Just
-            $ (NonEmptyText 's' "imple")
-            :| [(NonEmptyText 't' "est")]
-      }
 
 test_completeTask :: TestTree
 test_completeTask =
@@ -120,6 +88,22 @@ test_updateTask =
                  )
              ]
       )
+
+insertTask :: Schema -> TableName -> NonEmptyText -> Maybe Int64 -> Maybe Repeat -> Hasql.Session.Session ()
+insertTask schema table desc parent repeatAfter =
+  Postgres.Insert.addTask
+    schema
+    table
+    $ Postgres.Insert.AddTaskOptions
+      ( Postgres.Insert.Options
+          { due = Nothing,
+            parent = parent,
+            remindAt = Nothing,
+            repeatAfter = repeatAfter,
+            tags = Nothing
+          }
+      )
+      desc
 
 test_completeFlowRepeat :: TestTree
 test_completeFlowRepeat = goldenVsString "completeFlowRepeat" "test/golden/completeFlowRepeat.golden.txt"

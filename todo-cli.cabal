@@ -129,6 +129,7 @@ test-suite spec
 
   -- cabal-fmt: expand test/ -Main
   other-modules:
+    Postgres.Task.InsertTest
     Postgres.TaskTest
     RepeatTest
     TaskTest

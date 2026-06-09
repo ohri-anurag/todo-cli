@@ -53,10 +53,11 @@ import Postgres.Task.Insert
   ( AddTaskOptions (..),
     Options (..),
     UpdateTaskOptions (..),
-    addTask,
   )
+import Postgres.Task.Insert qualified as Postgres.Insert
 import Postgres.Task.Update qualified as Postgres.Update
 import Relude hiding (id)
+import Relude qualified
 import Repeat qualified
 import Setup qualified
 import System.Directory (XdgDirectory (..), createDirectoryIfMissing, getXdgDirectory)
@@ -176,9 +177,9 @@ data Error
   | PostgresSesssionError Hasql.Session.SessionError
   | EmptyUpdateOperation
 
-displayError :: Error -> IO ()
+displayError :: Error -> Text
 displayError =
-  TIO.putStrLn . Color.red . \case
+  Color.red . \case
     ConfigParseError err -> "Could not parse the config, error:\n" <> toText err
     PostgresConnectionError connectionError ->
       "Could not connect to postgres" <> maybe "" ((", error:\n" <>) . decodeUtf8) connectionError
@@ -196,20 +197,32 @@ withPostgresConnection f = do
   lift $ Hasql.Connection.release conn
   pure a
 
+data TasksHandle m = TasksHandle
+  { addTask :: AddTaskOptions -> ExceptT Text m ()
+  }
+
 main :: IO ()
 main = do
   cmd <- execParser parserInfo
+
+  let postgresHandle =
+        TasksHandle
+          { addTask = \taskOptions ->
+              withExceptT displayError
+                $ withPostgresConnection
+                $ \conn schema table _ ->
+                  withExceptT PostgresSesssionError
+                    $ ExceptT
+                    $ flip Hasql.Session.run conn
+                    $ Postgres.Insert.addTask schema table taskOptions
+          }
+      chosenHandle = postgresHandle
+  let TasksHandle {addTask} = chosenHandle
   case cmd of
     AddTask taskOptions -> do
-      eitherError <- runExceptT
-        $ withPostgresConnection
-        $ \conn schema table _ ->
-          withExceptT PostgresSesssionError
-            $ ExceptT
-            $ flip Hasql.Session.run conn
-            $ addTask schema table taskOptions
+      eitherError <- runExceptT $ addTask taskOptions
 
-      bitraverse_ displayError (const $ TIO.putStrLn $ Color.green "Task added successfully!") eitherError
+      TIO.putStrLn $ either Relude.id (const $ Color.green "Task added successfully!") eitherError
     CompleteTask index -> do
       eitherError <- runExceptT
         $ withPostgresConnection
@@ -218,7 +231,7 @@ main = do
             $ ExceptT
             $ flip Hasql.Session.run conn
             $ Postgres.Complete.completeTask schema table index
-      bitraverse_ displayError (const $ TIO.putStrLn $ Color.green "Task completed successfully!") eitherError
+      TIO.putStrLn $ either displayError (const $ Color.green "Task completed successfully!") eitherError
     Init method ->
       case method of
         Postgres -> do
@@ -228,7 +241,7 @@ main = do
                 $ ExceptT
                 $ flip Hasql.Session.run conn
                 $ Postgres.Init.initTaskTable schema table
-          bitraverse_ displayError (const $ TIO.putStrLn $ Color.green "Initialsed configuration successfully!") eitherError
+          TIO.putStrLn $ either displayError (const $ Color.green "Initialsed configuration successfully!") eitherError
     List -> do
       tz <- getCurrentTimeZone
       eitherError <- runExceptT $ do
@@ -240,7 +253,7 @@ main = do
               $ flip Hasql.Session.run conn
               $ Postgres.listTasks schema table
           traverse_ (putStrLn . toString . Task.display tz palette) tasks
-      bitraverse_ displayError (const $ pure ()) eitherError
+      bitraverse_ (TIO.putStrLn . displayError) (const $ pure ()) eitherError
     Setup method ->
       case method of
         Postgres -> do
@@ -266,6 +279,6 @@ main = do
             $ ExceptT
             $ flip Hasql.Session.run conn
             $ Postgres.Update.updateTask schema table index neUpdates
-      bitraverse_ displayError (const $ TIO.putStrLn $ Color.green "Task updated successfully!") eitherError
+      TIO.putStrLn $ either displayError (const $ Color.green "Task updated successfully!") eitherError
     Version ->
       putStrLn $ showVersion Paths.version
